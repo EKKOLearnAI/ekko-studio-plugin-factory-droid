@@ -22,6 +22,14 @@ The turn is bound to the real caller's Studio session, model and lease. Only the
 
 The isolated Droid process receives a random loopback key, a private home, and the selected workspace. It does not get the Factory account key, the Studio proxy lease credential, or host Droid settings. The local relay checks the incoming key, endpoint and exact model ID, adds Studio's lease credential, and forwards the authorized model request. The plugin requires the native session to confirm the selected model and receive a successful Studio model response. Studio manages upstream authentication and usage. Run cleanup closes the process and relay and removes the private configuration and session files. Scoped uses authorized Studio history rather than a persistent Droid session ID.
 
+## Native configuration pages
+
+The manifest registers `skills`, `mcp`, and `settings` in the `agent-settings` slot. `management.settings` returns `{ viewId: 'skills' }`. The activation account and Profile must match the caller on routing and on each RPC. The editor and the Global catalog and chat use the same host user home. Global sets `FACTORY_HOME_OVERRIDE` explicitly. Scoped supplies its own temporary home.
+
+The RPCs declared in `contracts/plugin.json` take a resource and, for Skill or MCP documents, an entry name. `list-native-config` returns the supported names. `read-native-config` returns the native path, projected editor text, existence flag and backing-file revision. `save-native-config` and `remove-native-config` require that revision. Writes serialize within the plugin process and replace JSON and Markdown atomically. Only a skill's `SKILL.md` or a single MCP entry can be removed. The plugin uses the existing native files without a migration or a separate Studio copy.
+
+The settings RPCs use fixed names beneath the canonical OS home and reject linked configuration directories and files. JSON edits preserve unexposed keys and unrelated entries. In the MCP editor, omission of an optional field preserves it. A `null` placeholder retains an existing hidden value. Replacing an entire headers or environment object can remove individual keys by omission. The editor handles personal files only. A project editor would need a host-validated workspace identity for each settings request.
+
 ## Inputs, permissions and cancellation
 
 The plugin validates the Studio account, Profile, session and mode before a turn. It reads attachments via Studio's authorized attachment APIs. ACP uses negotiated image and embedded resource blocks. The scoped SDK transport uses text/image content and native UTF-8 text or PDF document blocks. The plugin transmits the current run's MCP configuration. Raw tool inputs, complete tool responses, native stderr and RPC error messages stay outside Studio events.

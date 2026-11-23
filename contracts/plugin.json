@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "description": "Factory Droid exposes Studio Agent API v1 and records the selected Studio-managed CLI release. Native global continuation stays in its live Agent instance.",
+  "description": "Factory Droid exposes Studio Agent API v1 and records the selected Studio-managed CLI release. Native global continuation stays in its live Agent instance. Owner-scoped settings RPCs edit the native personal configuration used by the Global engine.",
   "models": {
     "engineSelection": {
       "type": "object",
@@ -22,9 +22,215 @@
         "version"
       ],
       "additionalProperties": false
+    },
+    "listNativeConfig": {
+      "type": "object",
+      "description": "List personal resources from the native host home.",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Select the personal resource collection.",
+          "enum": [
+            "skill",
+            "mcp"
+          ]
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "additionalProperties": false
+    },
+    "nativeConfigNames": {
+      "type": "object",
+      "description": "Names of supported personal entries.",
+      "properties": {
+        "names": {
+          "type": "array",
+          "description": "Resource names without document bodies.",
+          "items": {
+            "type": "string",
+            "description": "Skill directory or MCP entry name. Omitted for settings files.",
+            "minLength": 1,
+            "maxLength": 96
+          }
+        }
+      },
+      "required": [
+        "names"
+      ],
+      "additionalProperties": false
+    },
+    "readNativeConfig": {
+      "type": "object",
+      "description": "Select one native document or MCP entry.",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Select the native personal SKILL.md, MCP, base settings or local settings layer.",
+          "enum": [
+            "skill",
+            "mcp",
+            "settings",
+            "settings-local"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Skill directory or MCP entry name. Omitted for settings files.",
+          "minLength": 1,
+          "maxLength": 96
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "additionalProperties": false
+    },
+    "nativeConfigDocument": {
+      "type": "object",
+      "description": "Editor view of a native document with sensitive MCP values replaced by null.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Canonical path to the personal native backing file.",
+          "maxLength": 4096
+        },
+        "revision": {
+          "type": "string",
+          "description": "Opaque hash of the backing native file at read time; used to detect stale writes.",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "text": {
+          "type": "string",
+          "description": "Skill Markdown, a projected settings object or a projected MCP entry.",
+          "maxLength": 524288
+        },
+        "exists": {
+          "type": "boolean",
+          "description": "Whether the selected entry or file already exists."
+        }
+      },
+      "required": [
+        "path",
+        "revision",
+        "text",
+        "exists"
+      ],
+      "additionalProperties": false
+    },
+    "saveNativeConfig": {
+      "type": "object",
+      "description": "Save an updated personal document or MCP entry if it has not changed.",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Select the native personal SKILL.md, MCP, base settings or local settings layer.",
+          "enum": [
+            "skill",
+            "mcp",
+            "settings",
+            "settings-local"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Skill directory or MCP entry name. Omitted for settings files.",
+          "minLength": 1,
+          "maxLength": 96
+        },
+        "revision": {
+          "type": "string",
+          "description": "Opaque hash of the backing native file at read time; used to detect stale writes.",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "text": {
+          "type": "string",
+          "description": "UTF-8 Markdown or JSON editor contents. MCP null values keep existing private values.",
+          "maxLength": 262144
+        }
+      },
+      "required": [
+        "resource",
+        "revision",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "removeNativeConfig": {
+      "type": "object",
+      "description": "Remove one personal skill entry point or MCP server.",
+      "properties": {
+        "resource": {
+          "type": "string",
+          "description": "Select the personal resource collection.",
+          "enum": [
+            "skill",
+            "mcp"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Skill directory or MCP entry name. Omitted for settings files.",
+          "minLength": 1,
+          "maxLength": 96
+        },
+        "revision": {
+          "type": "string",
+          "description": "Opaque hash of the backing native file at read time; used to detect stale writes.",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "resource",
+        "name",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "nativeConfigSaved": {
+      "type": "object",
+      "description": "The mutation completed.",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "Always true after a successful operation.",
+          "enum": [
+            true
+          ]
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false
     }
   },
-  "rpc": {},
+  "rpc": {
+    "list-native-config": {
+      "description": "List only native personal skill or MCP entries.",
+      "input": "listNativeConfig",
+      "output": "nativeConfigNames"
+    },
+    "read-native-config": {
+      "description": "Read one owner-authorized personal entry or projected settings document.",
+      "input": "readNativeConfig",
+      "output": "nativeConfigDocument"
+    },
+    "save-native-config": {
+      "description": "Validate and replace the selected personal entry under a revision guard.",
+      "input": "saveNativeConfig",
+      "output": "nativeConfigSaved"
+    },
+    "remove-native-config": {
+      "description": "Remove the selected entry point or one server under a revision guard.",
+      "input": "removeNativeConfig",
+      "output": "nativeConfigSaved"
+    }
+  },
   "storage": {
     "engineSelection": {
       "model": "engineSelection",

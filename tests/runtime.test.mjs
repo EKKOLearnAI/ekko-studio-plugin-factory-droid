@@ -46,7 +46,7 @@ async function setup(t, { key = 'fixture-normal', getEngine } = {}) {
 test('registers the stable ID, declared features, and MIT manifest with the Studio Agent API', async () => {
   let registration
   let disposed
-  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { agents: { register(definition) {
+  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { rpc: { register() { return () => {} } }, agents: { register(definition) {
     registration = definition
     return { dispose() { disposed = true } }
   } } } })

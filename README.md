@@ -25,9 +25,25 @@ An existing external Droid is detected on the Studio host PATH and in standard u
 
 With a managed CLI, a Factory API key on the Studio server is the direct headless setup for Global. A native CLI already signed in under that same OS user supplies session credentials to the managed binary. See [Factory authentication](https://docs.factory.com/droid-exec/overview#installation).
 
-Both modes run in the selected workspace and show Studio prompts for tool permissions requested by the CLI. Approval authorizes only one use. Supported MCP transports are forwarded per turn. Images and files are capped at 8 MiB combined. Scoped file input accepts UTF-8 text and PDF, and image input accepts PNG, JPEG, GIF and WebP. Global uses ACP-negotiated input capabilities.
+Both modes run in the selected workspace and show Studio prompts for tool permissions requested by the CLI. Approval authorizes only one use. The plugin passes Studio's per-turn MCP bindings to the CLI, where support depends on the transport and Droid version. Images and files are capped at 8 MiB combined. Scoped file input accepts UTF-8 text and PDF, and image input accepts PNG, JPEG, GIF and WebP. Global uses ACP-negotiated input capabilities.
 
 Global follow-up turns can load the previous native session while the Studio Agent instance is alive. Scoped turns use authorized Studio history and a fresh native session. After a Studio restart, Global can also use Studio history. The plugin declares `resume: false`.
+
+## Manage native configuration
+
+Open **Agent Management → Factory Droid → Settings** as the activating Studio account in the activating Profile. The pages edit the system account's personal Droid files on the Studio server. Each editor shows its backing path.
+
+| Page | File | Actions |
+| --- | --- | --- |
+| **Skills** | `~/.factory/skills/<name>/SKILL.md` | Create or edit Markdown with matching `name` and a `description`. Remove the skill entry point while keeping supporting files. Manage the disable list through `disabledSkills` in **Droid settings**. [Factory Skills](https://docs.factory.com/harness/skills) |
+| **MCP servers** | `~/.factory/mcp.json` | Add, edit, enable, disable or remove one item inside `mcpServers`. Choose `stdio`, `http` or `sse` for a new entry. Reload shows existing endpoint URLs, arguments and credential values as `null`. Leave those placeholders to keep the stored values. To change transport, create a new entry. [Factory MCP](https://docs.factory.com/harness/mcp) |
+| **Droid settings** | `~/.factory/settings.json`, `~/.factory/settings.local.json` | Edit `model`, `reasoningEffort`, `disabledSkills`, `blockOnMcpLoad` and `streamAssistantResponses` in the chosen layer. Omit a supported key to clear it from that layer. Other keys, including custom model and authentication settings, are preserved. [Factory settings](https://docs.factory.com/droid-cli/settings) |
+
+Global launches use this personal home. Native local or project settings can override personal defaults. A model explicitly selected for the Studio chat takes precedence when the plugin requests it. Start a new chat to check an MCP or Skill change in a fresh native session.
+
+Scoped launches use a disposable private home and the authorized Studio model. They leave the Global personal files untouched. Droid can still discover native project resources in the selected workspace, which remain editable through Droid or a workspace editor. These Studio settings pages have no bound session workspace. The pages leave organization policies, OAuth login and connectivity testing to Droid. [Factory settings precedence](https://docs.factory.com/enterprise/hierarchical-settings-and-org-control)
+
+The editor accepts UTF-8 files up to 256 KiB and uses strict JSON for settings and MCP. It rejects symlinked configuration paths. A stale edit requires a reload before saving. With official Droid 1.17.2 on macOS arm64, native project MCP connected in an isolated scoped test. An additional server provided through the SDK's per-turn MCP input did not appear in that test. Signed-in Global ACP configuration loading and Linux and Windows behavior still need verification.
 
 ## Develop and test
 

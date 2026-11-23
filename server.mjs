@@ -2,12 +2,15 @@ import { mkdtemp, realpath, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Acp, AcpError } from './acp.mjs'
-import { engineStatus, findEngine } from './engine.mjs'
+import { engineStatus, factoryUserHome, findEngine, globalDroidEngine } from './engine.mjs'
 import { managedEngine } from './managed-engine.mjs'
+import { nativeConfiguration } from './native-config.mjs'
 import { acpServers, chooseModel, initialize, loginRequired, nativeModels, promptContent, sessionError, validId } from './protocol.mjs'
 import { openAcp } from './turn.mjs'
 import { runScoped, scopedProtocols } from './scoped.mjs'
 import manifest from './plugin.json' with { type: 'json' }
+import contract from './contracts/plugin.json' with { type: 'json' }
+import { registerRpc } from './sdk/harness/contracts.mjs'
 
 const fullId = 'plugin:factory-droid/factory-droid'
 const ownerOnly = 'Factory Droid is available to the Studio account and Profile that enabled the plugin.'
@@ -25,8 +28,9 @@ async function listModels(run, getEngine) {
   let cwd
   try {
     signal.throwIfAborted()
-    const engine = await getEngine()
-    if (!engine) return catalog('not_installed', [], install)
+    const installed = await getEngine()
+    if (!installed) return catalog('not_installed', [], install)
+    const engine = globalDroidEngine(installed)
     cwd = await mkdtemp(join(await realpath(tmpdir()), 'studio-droid-catalog-'))
     signal.throwIfAborted()
     acp = new Acp(engine.executable, engine.args, { cwd, env: engine.env }, ({ id }) => {
@@ -55,7 +59,7 @@ async function runTurn(input, run, previous, getEngine, signal) {
   const cwd = await realpath(run.paths.workspaceDir)
   signal.throwIfAborted()
   if (run.mode === 'scoped') return { reply: await runScoped(input, run, engine, cwd, signal) }
-  const turn = openAcp(engine, cwd, run, signal)
+  const turn = openAcp(globalDroidEngine(engine), cwd, run, signal)
   const startup = AbortSignal.any([signal, AbortSignal.timeout(25_000)])
   try {
     const capabilities = await initialize(turn.acp, startup, manifest.version)
@@ -152,6 +156,7 @@ export function definitionFor(owner, getEngine = findEngine, manager) {
     async getStatus(run) { return manager ? manager.status(run.signal) : engineStatus(await getEngine(), run.signal) },
     management: {
       installGuideUrl: manifest.documentation,
+      settings(run) { managementOwner(run); return { viewId: 'skills' } },
       ...(manager?.native ? {
         checkUpdate(run) { managementOwner(run); return manager.checkUpdate(run) },
         upgrade(input, run) { managementOwner(run); return manager.upgrade(input, run) },
@@ -169,7 +174,16 @@ export function definitionFor(owner, getEngine = findEngine, manager) {
 
 export function apply(ctx) {
   const { userId, profile } = ctx.identity
+  const owner = { userId, profile }
   const manager = managedEngine(ctx.paths.dataDir)
-  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }, async () => (await manager.resolve()).engine, manager))
-  return () => registration.dispose()
+  const configuration = Object.entries({ 'list-native-config': 'list', 'read-native-config': 'read',
+    'save-native-config': 'save', 'remove-native-config': 'remove' }).map(([name, method]) => {
+    return registerRpc(ctx, contract, name, (input, run) => {
+      if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
+      run.signal.throwIfAborted()
+      return nativeConfiguration(factoryUserHome(), run.signal)[method](input)
+    })
+  })
+  const registration = ctx.extensions.agents.register(definitionFor(owner, async () => (await manager.resolve()).engine, manager))
+  return async () => { await Promise.all([registration.dispose(), ...configuration.map(dispose => dispose())]) }
 }

@@ -5,58 +5,119 @@
   "i18n": {
     "en": {
       "name": "Factory Droid",
-      "description": "Run Factory Droid in Studio using the official ACP engine."
+      "description": "Run Factory Droid in Studio using the official ACP engine.",
+      "views": {
+        "skills": "Skills",
+        "mcp": "MCP servers",
+        "settings": "Droid settings"
+      }
     },
     "zh": {
       "name": "Factory Droid",
-      "description": "在 Studio 中通过官方 ACP 引擎运行 Factory Droid。"
+      "description": "在 Studio 中通过官方 ACP 引擎运行 Factory Droid。",
+      "views": {
+        "skills": "技能",
+        "mcp": "MCP 服务器",
+        "settings": "Droid 设置"
+      }
     },
     "zh-TW": {
       "name": "Factory Droid",
-      "description": "在 Studio 中透過官方 ACP 引擎執行 Factory Droid。"
+      "description": "在 Studio 中透過官方 ACP 引擎執行 Factory Droid。",
+      "views": {
+        "skills": "技能",
+        "mcp": "MCP 伺服器",
+        "settings": "Droid 設定"
+      }
     },
     "ja": {
       "name": "Factory Droid",
-      "description": "公式 ACP エンジンを使って Studio で Factory Droid を実行します。"
+      "description": "公式 ACP エンジンを使って Studio で Factory Droid を実行します。",
+      "views": {
+        "skills": "スキル",
+        "mcp": "MCP サーバー",
+        "settings": "Droid 設定"
+      }
     },
     "ko": {
       "name": "Factory Droid",
-      "description": "공식 ACP 엔진으로 Studio에서 Factory Droid를 실행합니다."
+      "description": "공식 ACP 엔진으로 Studio에서 Factory Droid를 실행합니다.",
+      "views": {
+        "skills": "스킬",
+        "mcp": "MCP 서버",
+        "settings": "Droid 설정"
+      }
     },
     "fr": {
       "name": "Factory Droid",
-      "description": "Exécutez Factory Droid dans Studio avec le moteur ACP officiel."
+      "description": "Exécutez Factory Droid dans Studio avec le moteur ACP officiel.",
+      "views": {
+        "skills": "Compétences",
+        "mcp": "Serveurs MCP",
+        "settings": "Paramètres Droid"
+      }
     },
     "es": {
       "name": "Factory Droid",
-      "description": "Ejecuta Factory Droid en Studio con el motor oficial de ACP."
+      "description": "Ejecuta Factory Droid en Studio con el motor oficial de ACP.",
+      "views": {
+        "skills": "Habilidades",
+        "mcp": "Servidores MCP",
+        "settings": "Configuración de Droid"
+      }
     },
     "de": {
       "name": "Factory Droid",
-      "description": "Factory Droid mit der offiziellen ACP-Engine in Studio ausführen."
+      "description": "Factory Droid mit der offiziellen ACP-Engine in Studio ausführen.",
+      "views": {
+        "skills": "Fähigkeiten",
+        "mcp": "MCP-Server",
+        "settings": "Droid-Einstellungen"
+      }
     },
     "pt": {
       "name": "Factory Droid",
-      "description": "Execute o Factory Droid no Studio com o motor oficial do ACP."
+      "description": "Execute o Factory Droid no Studio com o motor oficial do ACP.",
+      "views": {
+        "skills": "Habilidades",
+        "mcp": "Servidores MCP",
+        "settings": "Configurações do Droid"
+      }
     },
     "ru": {
       "name": "Factory Droid",
-      "description": "Запускайте Factory Droid в Studio через официальный движок ACP."
+      "description": "Запускайте Factory Droid в Studio через официальный движок ACP.",
+      "views": {
+        "skills": "Навыки",
+        "mcp": "Серверы MCP",
+        "settings": "Настройки Droid"
+      }
     },
     "ar": {
       "name": "Factory Droid",
-      "description": "شغّل Factory Droid في Studio باستخدام محرك ACP الرسمي."
+      "description": "شغّل Factory Droid في Studio باستخدام محرك ACP الرسمي.",
+      "views": {
+        "skills": "المهارات",
+        "mcp": "خوادم MCP",
+        "settings": "إعدادات Droid"
+      }
     },
     "tr": {
       "name": "Factory Droid",
-      "description": "Factory Droid’u resmî ACP motoruyla Studio’da çalıştırın."
+      "description": "Factory Droid’u resmî ACP motoruyla Studio’da çalıştırın.",
+      "views": {
+        "skills": "Beceriler",
+        "mcp": "MCP sunucuları",
+        "settings": "Droid ayarları"
+      }
     }
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 1,
   "server": "server.mjs",
   "permissions": [
-    "agents"
+    "agents",
+    "ui"
   ],
   "author": {
     "name": "Ekko Studio"
@@ -65,5 +126,26 @@
   "homepage": "https://factory.ai/product/cli",
   "documentation": "https://github.com/EKKOLearnAI/ekko-studio-plugin-factory-droid#install",
   "license": "MIT",
-  "icon": "assets/icon.png"
+  "icon": "assets/icon.png",
+  "client": "client.mjs",
+  "views": [
+    {
+      "id": "skills",
+      "title": "Skills",
+      "slot": "agent-settings",
+      "icon": "skills"
+    },
+    {
+      "id": "mcp",
+      "title": "MCP servers",
+      "slot": "agent-settings",
+      "icon": "mcp"
+    },
+    {
+      "id": "settings",
+      "title": "Droid settings",
+      "slot": "agent-settings",
+      "icon": "settings"
+    }
+  ]
 }

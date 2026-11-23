@@ -40,6 +40,17 @@ export function childEnv(parent = process.env) {
   return { ...env, ...registryEnv }
 }
 
+export function factoryUserHome(env = childEnv(), platform = process.platform) {
+  const key = platform === 'win32' ? 'USERPROFILE' : 'HOME'
+  const home = Object.entries(env).find(([name]) => name.toUpperCase() === key)?.[1] || homedir()
+  if (!isAbsolute(home)) throw new Error('Droid needs an absolute host user home.')
+  return home
+}
+
+export function globalDroidEngine(engine) {
+  return { ...engine, env: { ...engine.env, FACTORY_HOME_OVERRIDE: factoryUserHome(engine.env) } }
+}
+
 export async function findEngine(env = process.env, platform = process.platform, home = homedir(), arch = process.arch) {
   const override = env.EKKO_FACTORY_DROID_EXECUTABLE
   const windows = platform === 'win32'

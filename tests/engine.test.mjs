@@ -127,7 +127,7 @@ test('Studio registration exposes management to the activating account and Profi
   const { dataDir } = await setup(t)
   const identity = { userId: 10, profile: 'activation' }
   let registered
-  const dispose = apply({ identity, paths: { dataDir }, extensions: { agents: { register(definition) {
+  const dispose = apply({ identity, paths: { dataDir }, extensions: { rpc: { register() { return () => {} } }, agents: { register(definition) {
     registered = definition
     return { dispose() {} }
   } } } })
