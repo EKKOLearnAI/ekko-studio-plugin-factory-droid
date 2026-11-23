@@ -182,6 +182,12 @@
           "description": "Opaque hash of the backing native file at read time; used to detect stale writes.",
           "minLength": 64,
           "maxLength": 64
+        },
+        "ledgerRevision": {
+          "type": "string",
+          "description": "Observed personal Skill settings revision, when available before removal.",
+          "minLength": 64,
+          "maxLength": 64
         }
       },
       "required": [
@@ -330,6 +336,16 @@
           "description": "Markdown body, excluding YAML frontmatter.",
           "maxLength": 256000,
           "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Requested personal Skill state. Omit to leave an existing Skill's personal state unchanged."
+        },
+        "ledgerRevision": {
+          "type": "string",
+          "description": "Observed personal Skill settings revision. Required with an explicit enabled state.",
+          "minLength": 64,
+          "maxLength": 64
         }
       },
       "required": [
@@ -407,6 +423,34 @@
       "properties": {},
       "required": [],
       "additionalProperties": false
+    },
+    "toggleNativeMcp": {
+      "type": "object",
+      "description": "Change only the enabled state of a valid personal MCP server.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native personal MCP server name.",
+          "maxLength": 96,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "description": "Revision of the personal mcp.json file.",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the personal MCP server should be enabled."
+        }
+      },
+      "required": [
+        "name",
+        "revision",
+        "enabled"
+      ],
+      "additionalProperties": false
     }
   },
   "rpc": {
@@ -449,6 +493,11 @@
       "description": "Read the selected Droid engine status for the owner settings view.",
       "input": "nativeEngineStatusInput",
       "output": "nativeEngineStatus"
+    },
+    "toggle-native-mcp": {
+      "description": "Toggle a valid MCP entry without editing its transport configuration or private values.",
+      "input": "toggleNativeMcp",
+      "output": "nativeConfigSaved"
     }
   },
   "storage": {

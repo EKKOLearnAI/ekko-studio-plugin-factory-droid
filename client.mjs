@@ -13,13 +13,14 @@ const english = {
   precedence: 'Local overrides take precedence for keys present here. Workspace and organization settings can also affect which values Droid uses.',
   save: 'Save', saved: 'Saved to Droid configuration.', removed: 'Removed from Droid configuration.',
   addSkill: 'Add Skill', addMcp: 'Add MCP server', view: 'View', edit: 'Edit', remove: 'Delete', enable: 'Enable', disable: 'Disable', cancel: 'Cancel', close: 'Close',
-  skillList: 'Skill list', selectSkill: 'Select a Skill to view details', search: 'Search name or description',
+  skillList: 'Skill list', selectSkill: 'Select a Skill to view details', search: 'Search name or description', skillSearch: 'Search Skills', mcpSearch: 'Search name, command or transport',
   emptySkills: 'No personal Skills yet.', emptyMcp: 'No personal MCP servers yet.', noMatches: 'No matching items', loading: 'Loading…',
   name: 'Name', skillName: 'Use lowercase letters, numbers and hyphens.', mcpName: 'Use letters, numbers, hyphens, underscores or dots.',
   description: 'Description', descriptionHelp: 'Describe when Droid should use this Skill.',
   content: 'Skill content (Markdown)', contentHelp: 'Edit the SKILL.md body. The editor updates name and description in the YAML frontmatter.',
-  mcpConfig: 'Server configuration (JSON)', mcpHelp: 'Use Droid’s native stdio, http or sse format. Keep null placeholders to retain private values.',
-  mcpLimits: 'Connection tests and OAuth sign-in are performed in Droid. This page shows the personal file state.',
+  mcpConfig: 'Server configuration (JSON)', mcpHelp: 'Enter a complete stdio, http or sse configuration. Omit optional fields to remove them. Keep null placeholders for existing private values. Supply new credentials explicitly when changing the endpoint.',
+  mcpLimits: 'The page shows personal configuration status. Endpoints and arguments are masked and excluded from search. Use Droid for connection tests or OAuth.',
+  invalidMcp: 'Configuration is incomplete or invalid. Edit the server before enabling it.',
   masked: 'Endpoint hidden', enabledLabel: 'Enabled in personal configuration',
   readOnly: 'Read-only in Studio. Inspect the native file for links, invalid entries or unsupported configuration.',
   skillToggle: 'Personal Skill status. Project or frontmatter restrictions can also disable it.',
@@ -43,13 +44,14 @@ const simplified = {
   precedence: '本地覆盖中的同名设置优先。项目和组织配置也可能影响 Droid 最终使用的值。',
   save: '保存', saved: '已保存到 Droid 配置。', removed: '已从 Droid 配置中移除。',
   addSkill: '添加 Skill', addMcp: '添加 MCP 服务', view: '查看', edit: '编辑', remove: '删除', enable: '启用', disable: '停用', cancel: '取消', close: '关闭',
-  skillList: 'Skill 列表', selectSkill: '选择 Skill 查看详情', search: '搜索名称或描述',
+  skillList: 'Skill 列表', selectSkill: '选择 Skill 查看详情', search: '搜索名称或描述', skillSearch: '搜索 Skill', mcpSearch: '搜索名称、命令或传输类型',
   emptySkills: '还没有个人 Skill。', emptyMcp: '还没有个人 MCP 服务。', noMatches: '没有匹配的项目', loading: '正在读取…',
   name: '名称', skillName: '使用小写字母、数字和连字符。', mcpName: '使用字母、数字、连字符、下划线或点。',
   description: '描述', descriptionHelp: '说明 Droid 应在何时使用此 Skill。',
   content: 'Skill 内容（Markdown）', contentHelp: '编辑 SKILL.md 正文。编辑器会更新 YAML 文件头中的名称和描述。',
-  mcpConfig: '服务配置（JSON）', mcpHelp: '使用 Droid 原生 stdio、http 或 sse 格式。保留 null 占位符即可保留隐藏值。',
-  mcpLimits: '连接测试和 OAuth 登录由 Droid 完成。页面展示个人文件的配置状态。',
+  mcpConfig: '服务配置（JSON）', mcpHelp: '填写完整的 stdio、http 或 sse 配置。省略可选字段即可删除。保留 null 占位符会保留原有隐藏值。更改端点时请明确填写新凭据。',
+  mcpLimits: '页面展示个人配置状态。端点和参数已遮蔽，搜索不包含这些值。连接测试和 OAuth 登录请在 Droid 中完成。',
+  invalidMcp: '配置缺失或无效。请编辑此服务后再启用。',
   masked: '端点已隐藏', enabledLabel: '在个人配置中启用',
   readOnly: '在 Studio 中只读。请在原生配置中检查链接、无效或不支持的条目。',
   skillToggle: '这是个人 Skill 的状态。项目或文件头中的限制也可使其停用。',
@@ -73,13 +75,14 @@ const traditional = {
   precedence: '本機覆寫中的同名設定優先。專案和組織設定也可能影響 Droid 最終使用的值。',
   save: '儲存', saved: '已儲存至 Droid 設定。', removed: '已從 Droid 設定中移除。',
   addSkill: '新增 Skill', addMcp: '新增 MCP 伺服器', view: '檢視', edit: '編輯', remove: '刪除', enable: '啟用', disable: '停用', cancel: '取消', close: '關閉',
-  skillList: 'Skill 清單', selectSkill: '選擇 Skill 查看詳細資料', search: '搜尋名稱或說明',
+  skillList: 'Skill 清單', selectSkill: '選擇 Skill 查看詳細資料', search: '搜尋名稱或說明', skillSearch: '搜尋 Skill', mcpSearch: '搜尋名稱、命令或傳輸類型',
   emptySkills: '還沒有個人 Skill。', emptyMcp: '還沒有個人 MCP 伺服器。', noMatches: '沒有相符的項目', loading: '正在讀取…',
   name: '名稱', skillName: '使用小寫字母、數字和連字號。', mcpName: '使用字母、數字、連字號、底線或點。',
   description: '說明', descriptionHelp: '說明 Droid 應在何時使用這個 Skill。',
   content: 'Skill 內容（Markdown）', contentHelp: '編輯 SKILL.md 正文。編輯器會更新 YAML 檔頭中的名稱和說明。',
-  mcpConfig: '伺服器設定（JSON）', mcpHelp: '使用 Droid 原生 stdio、http 或 sse 格式。保留 null 即可保留隱藏的值。',
-  mcpLimits: '連線測試和 OAuth 登入由 Droid 執行。此頁顯示個人檔案的設定狀態。',
+  mcpConfig: '伺服器設定（JSON）', mcpHelp: '填寫完整的 stdio、http 或 sse 設定。省略選填欄位即可刪除。保留 null 可保留原有的隱藏值。更改端點時請明確填寫新憑證。',
+  mcpLimits: '此頁顯示個人設定狀態。端點和參數已遮蔽，搜尋不包含這些值。連線測試和 OAuth 登入請在 Droid 中執行。',
+  invalidMcp: '設定缺失或無效。請編輯伺服器後再啟用。',
   masked: '端點已隱藏', enabledLabel: '在個人設定中啟用',
   readOnly: '在 Studio 中唯讀。請在原生設定中檢查連結、無效或未支援的項目。',
   skillToggle: '此為個人 Skill 狀態。專案或檔頭限制也可能使其停用。',
@@ -93,7 +96,6 @@ const themeStyles = `
   :root{--mc-space:var(--spacing-scale,1);--mc-border:var(--border-width,1px) solid var(--border-color);color-scheme:var(--studio-color-scheme,normal)}
   html,body,#root{height:100%;min-height:0;margin:0}#root{padding:0}
   .mc-settings *,.mc-manager *{box-sizing:border-box}
-  @media(max-width:768px){.mc-manager .mc-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
   .mc-settings,.mc-manager{display:flex;flex-direction:column;width:100%;height:100%;min-height:0;min-width:0;color:var(--text-primary);font:var(--font-size-base,14px)/var(--line-height,1.6) var(--font-family,system-ui);letter-spacing:var(--letter-spacing,normal)}
   .mc-settings button,.mc-manager button{display:inline-flex;align-items:center;justify-content:center;gap:calc(6px * var(--mc-space));min-height:var(--control-height,28px);padding:4px 10px;border:var(--mc-border);border-radius:var(--radius-component,6px);background:transparent;line-height:1.4;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
   .mc-settings button:hover,.mc-manager button:hover{background:var(--bg-secondary)}
@@ -113,7 +115,7 @@ const themeStyles = `
   .mc-source-path{display:block;font:calc(var(--font-size-base,14px) * 12 / 14)/1.6 ui-monospace,monospace;color:var(--text-muted,var(--text-secondary));overflow-wrap:anywhere}
   .mc-source-info{font-size:calc(var(--font-size-base,14px) * 12 / 14);color:var(--text-secondary)}
   .mc-source-info summary{cursor:pointer}.mc-source-info p,.mc-source-info code{margin-top:8px}
-  .mc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(12px * var(--mc-space))}
+  .mc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:calc(12px * var(--mc-space))}
   .mc-stat{padding:calc(14px * var(--mc-space));border:var(--mc-border);border-radius:var(--radius-component,8px);background:var(--theme-card-bg,var(--bg-card));display:flex;flex-direction:column;gap:6px}
   .mc-stat span{font-size:calc(var(--font-size-base,14px) * 11 / 14);color:var(--text-muted,var(--text-secondary))}.mc-stat strong{font-size:calc(var(--font-size-base,14px) * 24 / 14);font-weight:600;line-height:1}.mc-stat.active strong{color:var(--success,var(--accent-primary))}
   .mc-toolbar,.mc-buttons{display:flex;align-items:center;gap:calc(8px * var(--mc-space));flex-wrap:wrap}
@@ -367,8 +369,8 @@ async function mountResources(root, ctx, t) {
   const toolbar = element('div', '', 'mc-toolbar')
   const search = element('input')
   search.type = 'search'
-  search.placeholder = t.search
-  search.setAttribute('aria-label', t.search)
+  search.placeholder = skills ? t.skillSearch : t.mcpSearch
+  search.setAttribute('aria-label', skills ? t.search : t.mcpSearch)
   search.dataset.themeSurface = 'input'
   search.oninput = () => render()
   const add = button(skills ? t.addSkill : t.addMcp, () => operation(() => showEditor()), 'primary')
@@ -394,7 +396,7 @@ async function mountResources(root, ctx, t) {
   const sourceInfo = element('details', '', 'mc-source-info')
   sourceInfo.append(element('summary', t.scopes), element('p', t.scope), path, element('p', t.project))
   const stats = element('div', '', 'mc-stats')
-  const counts = [t.total, t.active, t.disabled].map((label, index) => {
+  const counts = [t.total, t.active, t.disabled, t.unavailable].map((label, index) => {
     const stat = element('div', '', index === 1 ? 'mc-stat active' : 'mc-stat')
     stat.dataset.themeSurface = 'card'
     const number = element('strong', '0')
@@ -433,11 +435,9 @@ async function mountResources(root, ctx, t) {
   const enabled = element('input')
   enabled.type = 'checkbox'
   enabled.setAttribute('aria-label', t.enabledLabel)
-  if (!skills) {
-    const check = element('label', '', 'mc-check')
-    check.append(enabled, element('span', t.enabledLabel))
-    fields.append(check)
-  }
+  const check = element('label', '', 'mc-check')
+  check.append(enabled, element('span', t.enabledLabel))
+  fields.append(check)
   const warning = element('p', '', 'mc-message')
   warning.setAttribute('role', 'alert')
   const buttons = element('div', '', 'mc-buttons')
@@ -473,7 +473,7 @@ async function mountResources(root, ctx, t) {
     container.setAttribute('aria-busy', String(value))
     search.disabled = add.disabled = value || !inventory
     refresh.disabled = fields.disabled = save.disabled = cancel.disabled = value
-    enabled.disabled = viewing
+    enabled.disabled = viewing || (skills && (!inventory?.ledgerRevision || Boolean(editing && !editing.canToggle)))
     for (const control of container.querySelectorAll('.mc-items button,.mc-skill-detail button')) {
       control.disabled = value || control.dataset.readOnly === 'true'
     }
@@ -507,8 +507,7 @@ async function mountResources(root, ctx, t) {
     if (disposed) return
     inventory = value
     path.textContent = value.path
-    const values = [value.items.length, value.items.filter(item => item.state === 'enabled').length,
-      value.items.filter(item => item.state === 'disabled').length]
+    const values = [value.items.length, ...['enabled', 'disabled', 'unavailable'].map(state => value.items.filter(item => item.state === state).length)]
     counts.forEach((count, index) => { count.textContent = String(values[index]) })
     render()
   }
@@ -530,7 +529,8 @@ async function mountResources(root, ctx, t) {
     const edit = button(t.edit, () => operation(() => showEditor(item)), 'quiet')
     const remove = button(t.remove, () => operation(async () => {
       if (!await ctx.ui.confirm((skills ? t.deleteSkill : t.deleteMcp) + ' (' + item.name + ')') || disposed) return
-      await ctx.rpc.call('remove-native-config', { resource, name: item.name, revision: item.revision })
+      const ledger = skills && inventory.ledgerRevision ? { ledgerRevision: inventory.ledgerRevision } : {}
+      await ctx.rpc.call('remove-native-config', { resource, name: item.name, revision: item.revision, ...ledger })
       await load()
       if (!disposed) ctx.ui.notify(t.removed, 'success')
     }), 'quiet danger')
@@ -550,10 +550,7 @@ async function mountResources(root, ctx, t) {
         await ctx.rpc.call('toggle-native-skill', { name: item.name, enabled: !current, revision: item.revision,
           ledgerRevision: inventory.ledgerRevision })
       } else {
-        const saved = await currentDocument(item)
-        const configuration = jsonObject(saved.text, t.jsonObject)
-        configuration.disabled = current
-        await ctx.rpc.call('save-native-config', { resource, name: item.name, revision: saved.revision, text: JSON.stringify(configuration) })
+        await ctx.rpc.call('toggle-native-mcp', { name: item.name, revision: item.revision, enabled: !current })
       }
       await load()
       if (!disposed) ctx.ui.notify(t.saved, 'success')
@@ -563,7 +560,7 @@ async function mountResources(root, ctx, t) {
     toggle.setAttribute('aria-label', (current ? t.disable : t.enable) + ' ' + item.name)
     if (!item.canToggle) {
       toggle.dataset.readOnly = 'true'
-      toggle.title = skills ? t.skillBlocked : t.readOnly
+      toggle.title = skills ? t.skillBlocked : item.readOnly ? t.readOnly : t.invalidMcp
     }
     for (const control of [...actions.children, toggle]) control.disabled = control.dataset.readOnly === 'true'
     return { actions, toggle }
@@ -650,7 +647,8 @@ async function mountResources(root, ctx, t) {
       const heading = element('div', '', 'mc-row-heading')
       heading.append(element('strong', item.name), badges(item))
       const summary = element('div', '', 'mc-summary')
-      summary.append(heading, element('p', item.readOnly ? t.readOnly : item.description || t.masked))
+      const description = item.readOnly ? t.readOnly : item.state === 'unavailable' ? t.invalidMcp : item.description || t.masked
+      summary.append(heading, element('p', description))
       const { actions, toggle } = resourceActions(item)
       const footer = element('div', '', 'mc-row-footer')
       footer.append(actions, toggle)
@@ -675,6 +673,9 @@ async function mountResources(root, ctx, t) {
     if (description) description.value = item?.description ?? ''
     if (skills) {
       content.value = skillBody(saved?.text ?? '')
+      enabled.checked = !item || item.state === 'enabled'
+      if (!inventory.ledgerRevision || (item && !item.canToggle)) check.title = t.skillBlocked
+      else check.removeAttribute('title')
     } else {
       const configuration = saved ? jsonObject(saved.text, t.jsonObject) : { type: 'stdio', command: '', args: [] }
       enabled.checked = configuration.disabled !== true
@@ -682,7 +683,7 @@ async function mountResources(root, ctx, t) {
       content.value = JSON.stringify(configuration, null, 2)
     }
     content.readOnly = readOnly
-    save.hidden = readOnly
+    buttons.replaceChildren(cancel, ...(readOnly ? [] : [save]))
     cancel.textContent = readOnly ? t.close : t.cancel
     baseline = values()
     dialog.showModal()
@@ -709,6 +710,7 @@ async function mountResources(root, ctx, t) {
 
   function saveEditor() {
     if (busy || viewing || !form.reportValidity()) return
+    const setSkillState = skills && !enabled.disabled && (!editing || enabled.checked !== (editing.state === 'enabled'))
     void operation(async () => {
       const itemName = name.value.trim()
       const lookup = { resource, name: itemName }
@@ -716,7 +718,8 @@ async function mountResources(root, ctx, t) {
       if (saved?.exists) throw new Error(t.duplicate)
       const revision = editing?.revision ?? saved.revision
       if (skills) {
-        await ctx.rpc.call('edit-native-skill', { name: itemName, revision, description: description.value, content: content.value })
+        const state = setSkillState ? { enabled: enabled.checked, ledgerRevision: inventory.ledgerRevision } : {}
+        await ctx.rpc.call('edit-native-skill', { name: itemName, revision, description: description.value, content: content.value, ...state })
         selected = itemName
       } else {
         const configuration = jsonObject(content.value, t.jsonObject)

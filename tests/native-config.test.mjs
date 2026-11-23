@@ -100,6 +100,43 @@ test('Skill cards and detail edits preserve YAML metadata and use the effective 
     ledgerRevision: overview.ledgerRevision, enabled: true }), /cannot be toggled/)
 })
 
+test('Skill editor state and same-name recreation clear only the matching personal ledger entries', async t => {
+  const home = await temporaryHome(t)
+  const config = nativeConfiguration(home, timeout())
+  const name = 'repeatable-skill'
+  const selection = input('skill', name)
+  const native = join(home, '.factory')
+  await mkdir(native)
+  const basePath = join(native, 'settings.json')
+  const localPath = join(native, 'settings.local.json')
+  await writeFile(basePath, JSON.stringify({ disabledSkills: [name, 'other-base'], privateField: 'keep-base' }))
+  await writeFile(localPath, JSON.stringify({ disabledSkills: [name, 'other-local'], privateField: 'keep-local' }))
+  const onDisk = async path => JSON.parse(await readFile(path, 'utf8'))
+  const edit = async (enabled, content) => {
+    const { ledgerRevision } = await config.overview({ resource: 'skill' })
+    const { revision } = await config.read(selection)
+    await config.editSkill({ name, ledgerRevision, revision, description: 'Fixture Skill', content, enabled })
+  }
+  await edit(false, 'First version')
+  assert.deepEqual(await onDisk(basePath), { disabledSkills: ['other-base'], privateField: 'keep-base' })
+  assert.deepEqual(await onDisk(localPath), { disabledSkills: [name, 'other-local'], privateField: 'keep-local' })
+  await edit(true, 'Second version')
+  assert.equal((await config.overview({ resource: 'skill' })).items[0].state, 'enabled')
+  assert.match((await config.read(selection)).text, /Second version/)
+  await edit(false, 'Second version')
+  const { ledgerRevision } = await config.overview({ resource: 'skill' })
+  const { revision } = await config.read(selection)
+  await writeFile(basePath, JSON.stringify({ disabledSkills: ['other-base', name], privateField: 'keep-base' }))
+  await assert.rejects(config.remove({ ...selection, revision, ledgerRevision }), /settings changed/)
+  assert.equal((await config.read(selection)).exists, true)
+  await remove(config, selection)
+  assert.deepEqual(await onDisk(basePath), { disabledSkills: ['other-base'], privateField: 'keep-base' })
+  assert.deepEqual(await onDisk(localPath), { disabledSkills: ['other-local'], privateField: 'keep-local' })
+  await edit(true, 'Recreated')
+  assert.equal((await config.overview({ resource: 'skill' })).items[0].state, 'enabled')
+  assert.match((await config.read(selection)).text, /Recreated/)
+})
+
 test('MCP edits mask private values, preserve hidden values and unrelated entries, and remove a single server', async t => {
   const home = await temporaryHome(t)
   const native = join(home, '.factory')
@@ -141,6 +178,61 @@ test('MCP edits mask private values, preserve hidden values and unrelated entrie
   assert.deepEqual(stored.mcpServers.unsupported, unsupported)
   assert.equal(stored.mcpServers['new-local'].disabled, true)
   assert.equal(stored.mcpServers['api-service'], undefined)
+})
+
+test('MCP edits remove omitted fields, safely replace transports, and reject masked credentials for a different endpoint', async t => {
+  const home = await temporaryHome(t)
+  const config = nativeConfiguration(home, timeout())
+  const selection = input('mcp', 'audit-service')
+  const mcpPath = join(home, '.factory', 'mcp.json')
+  await mkdir(join(home, '.factory'))
+  const onDisk = async () => JSON.parse(await readFile(mcpPath, 'utf8'))
+  await writeFile(mcpPath, JSON.stringify({ untouched: true, mcpServers: {
+    'audit-service': { type: 'http', url: 'https://example.invalid/original', headers: { Authorization: 'secret' },
+      oauth: { clientSecret: 'original' }, timeout: 2000 },
+    sibling: { type: 'stdio', command: 'untouched' },
+  } }))
+  const projected = JSON.parse((await config.read(selection)).text)
+  const oldDocument = await onDisk()
+  await assert.rejects(save(config, selection, JSON.stringify({ ...projected, url: 'https://example.invalid/new' })), /existing native value/)
+  assert.deepEqual(await onDisk(), oldDocument)
+  await save(config, selection, JSON.stringify({ ...projected, type: 'sse' }))
+  assert.deepEqual((await onDisk()).mcpServers['audit-service'], {
+    ...oldDocument.mcpServers['audit-service'], type: 'sse', disabled: false,
+  })
+  await save(config, selection, '{"type":"stdio","command":"node","args":["fixture.mjs"],"env":{"TOKEN":"fixture"}}')
+  assert.deepEqual((await onDisk()).mcpServers['audit-service'], {
+    type: 'stdio', command: 'node', args: ['fixture.mjs'], env: { TOKEN: 'fixture' }, disabled: false, timeout: 2000,
+  })
+  const editor = JSON.parse((await config.read(selection)).text)
+  delete editor.env
+  await save(config, selection, JSON.stringify(editor))
+  const document = await onDisk()
+  assert.deepEqual(document, { untouched: true, mcpServers: { ...oldDocument.mcpServers, 'audit-service': {
+    type: 'stdio', command: 'node', args: ['fixture.mjs'], disabled: false, timeout: 2000,
+  } } })
+  assert.equal(Object.hasOwn(JSON.parse((await config.read(selection)).text), 'env'), false)
+})
+
+test('invalid MCP entries are unavailable and cannot toggle until repaired', async t => {
+  const home = await temporaryHome(t)
+  const config = nativeConfiguration(home, timeout())
+  const selection = input('mcp', 'bad-stdio')
+  const root = join(home, '.factory')
+  await mkdir(root)
+  const mcpPath = join(root, 'mcp.json')
+  const original = JSON.stringify({ mcpServers: { 'bad-stdio': { type: 'stdio' }, 'bad-http': { type: 'http' } } })
+  await writeFile(mcpPath, original)
+  const inventory = await config.overview({ resource: 'mcp' })
+  assert(inventory.items.every(item => item.state === 'unavailable' && !item.canToggle && !item.readOnly))
+  await assert.rejects(config.toggleMcp({ name: selection.name, revision: inventory.items[0].revision, enabled: false }), /needs an executable command/)
+  assert.equal(await readFile(mcpPath, 'utf8'), original)
+  await save(config, selection, '{"type":"stdio","command":"node","env":{"TOKEN":"keep"}}')
+  const { revision } = await config.read(selection)
+  await config.toggleMcp({ name: selection.name, revision, enabled: false })
+  const stored = JSON.parse(await readFile(mcpPath, 'utf8')).mcpServers
+  assert.deepEqual(stored['bad-stdio'], { type: 'stdio', command: 'node', env: { TOKEN: 'keep' }, disabled: true })
+  assert.deepEqual(stored['bad-http'], { type: 'http' })
 })
 
 test('settings edit only the selected personal layer and retain unknown or protected configuration', async t => {

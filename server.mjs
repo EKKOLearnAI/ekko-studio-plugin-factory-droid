@@ -189,6 +189,7 @@ export function apply(ctx) {
     'remove-native-config': 'remove',
     'edit-native-skill': 'editSkill',
     'toggle-native-skill': 'toggleSkill',
+    'toggle-native-mcp': 'toggleMcp',
   }).map(([name, method]) => registerOwnerRpc(name, (input, run) => nativeConfiguration(factoryUserHome(), run.signal)[method](input)))
   configuration.push(registerOwnerRpc('native-engine-status', async (_input, run) => {
     const { installed, version, source } = await manager.status(run.signal)

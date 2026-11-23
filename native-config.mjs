@@ -87,6 +87,37 @@ async function replace(path, text, revision, signal) {
   } finally { await rm(temporary, { force: true }) }
 }
 
+async function applySkillChanges(changes, signal) {
+  for (const { path, saved, text } of changes) {
+    if (text !== null && Buffer.byteLength(text) > limit) throw new Error('Droid configuration exceeds the 256 KiB file limit.')
+    checkRevision(await snapshot(path), version(saved))
+  }
+  async function write(path, text, revision, writeSignal) {
+    if (text !== null) return replace(path, text, revision, writeSignal)
+    await folder(dirname(path))
+    checkRevision(await snapshot(path), revision)
+    writeSignal.throwIfAborted()
+    await unlink(path)
+  }
+  const applied = []
+  try {
+    for (const change of changes) {
+      await write(change.path, change.text, version(change.saved), signal)
+      applied.push(change)
+    }
+  } catch (error) {
+    const recoverySignal = AbortSignal.timeout(8000)
+    const failures = []
+    for (const { path, saved, text } of applied.reverse()) {
+      const committed = { exists: text !== null, text: text ?? '' }
+      try { await write(path, saved.exists ? saved.text : null, version(committed), recoverySignal) }
+      catch (failure) { failures.push(failure) }
+    }
+    if (failures.length) throw new Error('A native file changed during recovery. Refresh and inspect the Droid files before retrying.', { cause: error })
+    throw error
+  }
+}
+
 function serialize(root, work) {
   const active = (pending.get(root) ?? Promise.resolve()).catch(() => {}).then(work)
   pending.set(root, active)
@@ -196,10 +227,13 @@ function applyMcp(entry, view) {
   if (!['stdio', 'http', 'sse'].includes(type)) throw new Error('MCP supports stdio, http and sse.')
   if (view.disabled !== undefined && typeof view.disabled !== 'boolean') throw new Error('The disabled field must be true or false.')
   if (entry && !isRecord(entry)) throw new Error('This native MCP entry is not an object.')
-  const before = entry ?? {}
-  if (entry && (before.type ?? 'stdio') !== type) throw new Error('Create a new MCP entry to use a different transport.')
-  const updated = { ...before, type, disabled: view.disabled ?? false }
+  const previousType = entry?.type ?? 'stdio'
+  const updated = { ...entry }
+  for (const field of mcpFields) delete updated[field]
+  updated.type = type
+  updated.disabled = view.disabled ?? false
   if (type === 'stdio') {
+    const before = previousType === 'stdio' ? entry ?? {} : {}
     if (['url','headers','oauth'].some(key => Object.hasOwn(view, key))) throw new Error('stdio servers use command, args and env.')
     if (typeof view.command !== 'string' || !view.command.trim() || /[\x00-\x1f]/.test(view.command)) throw new Error('A stdio server needs an executable command.')
     updated.command = view.command
@@ -211,9 +245,10 @@ function applyMcp(entry, view) {
       updated.args = args
     }
     if (Object.hasOwn(view, 'env')) {
-      updated.env = view.env === null ? keepValue(null, before.env) : credentials(view.env, isRecord(before.env) ? before.env : {})
+      updated.env = credentials(keepValue(view.env, before.env), isRecord(before.env) ? before.env : {})
     }
   } else {
+    const before = ['http', 'sse'].includes(previousType) ? entry : {}
     if (['command','args','env'].some(key => Object.hasOwn(view, key))) throw new Error('Remote servers use url, headers and oauth.')
     try {
       const raw = keepValue(view.url, before.url)
@@ -221,15 +256,22 @@ function applyMcp(entry, view) {
       if (typeof raw !== 'string' || !['http:', 'https:'].includes(url.protocol)) throw new Error()
       updated.url = raw
     } catch { throw new Error('An HTTP or SSE MCP server needs an HTTP(S) URL.') }
+    const sameEndpoint = updated.url === before.url
     if (Object.hasOwn(view, 'headers')) {
-      updated.headers = view.headers === null ? keepValue(null, before.headers) : credentials(view.headers, isRecord(before.headers) ? before.headers : {})
+      const savedHeaders = sameEndpoint ? before.headers : undefined
+      updated.headers = credentials(keepValue(view.headers, savedHeaders), isRecord(savedHeaders) ? savedHeaders : {})
     }
     if (Object.hasOwn(view, 'oauth')) {
       if (view.oauth !== null && view.oauth !== false) throw new Error('Use false to disable OAuth or null to retain a native override.')
-      updated.oauth = keepValue(view.oauth, before.oauth)
+      updated.oauth = keepValue(view.oauth, sameEndpoint ? before.oauth : undefined)
     }
   }
   return updated
+}
+
+function checkMcpEntry(entry, view) {
+  if (Object.hasOwn(entry, 'disabled') && typeof entry.disabled !== 'boolean') throw new Error('The disabled field must be true or false.')
+  applyMcp(entry, view)
 }
 
 export function nativeConfiguration(home, signal) {
@@ -245,21 +287,38 @@ export function nativeConfiguration(home, signal) {
   }
 
   async function skillLedger(root) {
-    const basePath = join(root, 'settings.json')
-    const localPath = join(root, 'settings.local.json')
-    const [base, local] = await Promise.all([snapshot(basePath), snapshot(localPath)])
-    const localConfig = readJson(local)
-    const useLocal = Object.hasOwn(localConfig, 'disabledSkills')
-    const file = useLocal ? localConfig : readJson(base)
-    const disabled = Object.hasOwn(file, 'disabledSkills') ? file.disabledSkills : []
-    if (!settingsFields.disabledSkills(disabled)) throw new Error('Repair disabledSkills in the native Droid settings first.')
-    const revision = createHash('sha256').update(version(base)).update(version(local)).digest('hex')
-    return { path: useLocal ? localPath : basePath, saved: useLocal ? local : base, file, disabled, revision }
+    const layers = await Promise.all(['settings.json', 'settings.local.json'].map(async fileName => {
+      const path = join(root, fileName)
+      const saved = await snapshot(path)
+      const file = readJson(saved)
+      const disabled = Object.hasOwn(file, 'disabledSkills') ? file.disabledSkills : []
+      if (!settingsFields.disabledSkills(disabled)) throw new Error('Repair disabledSkills in the native Droid settings first.')
+      return { path, saved, file, disabled }
+    }))
+    const [base, local] = layers
+    const effective = Object.hasOwn(local.file, 'disabledSkills') ? local : base
+    const revision = createHash('sha256').update(version(base.saved)).update(version(local.saved)).digest('hex')
+    return { layers, effective, revision }
+  }
+
+  function ledgerChanges(ledger, name, enabled, clearShadowed = false) {
+    const layers = clearShadowed ? ledger.layers : [ledger.effective]
+    return layers.flatMap(layer => {
+      const disabled = layer === ledger.effective && !enabled
+      if (layer.disabled.includes(name) === disabled) return []
+      const disabledSkills = disabled ? [...layer.disabled, name] : layer.disabled.filter(value => value !== name)
+      if (!settingsFields.disabledSkills(disabledSkills)) throw new Error('The native disabledSkills list is full.')
+      return [{ path: layer.path, saved: layer.saved, text: jsonText({ ...layer.file, disabledSkills }) }]
+    })
+  }
+
+  function checkLedgerRevision(ledger, revision) {
+    if (revision !== undefined && ledger.revision !== revision) throw new Error('The native Skill settings changed. Refresh before editing.')
   }
 
   function skillState(metadata, name, ledger) {
     if (metadata.name !== name || typeof metadata.description !== 'string' || !metadata.description.trim()) return 'unavailable'
-    return metadata.enabled === false || ledger?.disabled.includes(name) ? 'disabled' : ledger ? 'enabled' : 'unavailable'
+    return metadata.enabled === false || ledger?.effective.disabled.includes(name) ? 'disabled' : ledger ? 'enabled' : 'unavailable'
   }
 
   return {
@@ -272,19 +331,23 @@ export function nativeConfiguration(home, signal) {
         const revision = version(saved)
         const entries = mcpEntries(readJson(saved))
         const items = Object.keys(entries).filter(name => serverName.test(name) && !forbidden.has(name)).sort().map(name => {
+          let entry
           try {
-            const entry = mcpView(entries[name])
-            return { name, revision, state: entry.disabled ? 'disabled' : 'enabled', transport: entry.type,
-              description: typeof entry.command === 'string' ? entry.command.slice(0, 2000) : '', readOnly: false, canToggle: true }
+            entry = mcpView(entries[name])
           } catch { return { name, state: 'unavailable', description: '', readOnly: true, canToggle: false } }
+          let state = entry.disabled ? 'disabled' : 'enabled'
+          try { checkMcpEntry(entries[name], entry) } catch { state = 'unavailable' }
+          return { name, revision, state, transport: entry.type, readOnly: false, canToggle: state !== 'unavailable',
+            description: typeof entry.command === 'string' ? entry.command.slice(0, 2000) : '' }
         })
         return { path, items }
       }
       const path = join(root, 'skills')
       const items = []
-      if (!await folder(root) || !await folder(path)) return { path, items }
+      const rootExists = await folder(root)
       const ledger = await skillLedger(root).catch(() => null)
-      for (const entry of await readdir(path, { withFileTypes: true })) {
+      const directories = rootExists && await folder(path) ? await readdir(path, { withFileTypes: true }) : []
+      for (const entry of directories) {
         signal.throwIfAborted()
         const name = entry.name
         if (!skillName.test(name) || deviceName.test(name)) continue
@@ -304,11 +367,13 @@ export function nativeConfiguration(home, signal) {
           items.push({ name, state: 'unavailable', description: '', readOnly: true, canToggle: false, path: file })
         }
       }
-      return { path, items: items.sort((a, b) => a.name.localeCompare(b.name)), ...(ledger ? { ledgerRevision: ledger.revision, ledgerPath: ledger.path } : {}) }
+      return { path, items: items.sort((a, b) => a.name.localeCompare(b.name)),
+        ...(ledger ? { ledgerRevision: ledger.revision, ledgerPath: ledger.effective.path } : {}) }
     },
-    async editSkill({ name, revision, description, content }) {
+    async editSkill({ name, revision, description, content, enabled, ledgerRevision }) {
       checkResource('skill', name)
       if (!description.trim() || !content.trim()) throw new Error('A Skill requires a description and Markdown content.')
+      if (enabled !== undefined && ledgerRevision === undefined) throw new Error('Refresh the personal Skill settings before changing its status.')
       const root = await configRoot()
       return serialize(root, async () => {
         signal.throwIfAborted()
@@ -316,12 +381,21 @@ export function nativeConfiguration(home, signal) {
         const saved = await snapshot(path)
         checkRevision(saved, revision)
         const { document, metadata, body } = skillParts(saved.text)
-        if (metadata.name === name && metadata.description === description.trim() && body === content) return { ok: true }
-        document.set('name', name)
-        document.set('description', description.trim())
-        const markdown = skillDocument(name, `---\n${document.toString({ lineWidth: 0 })}---\n\n${content}`)
-        await locate(root, 'skill', name, true)
-        await replace(path, markdown, revision, signal)
+        let changes = []
+        if (!saved.exists || enabled !== undefined) {
+          const ledger = await skillLedger(root)
+          checkLedgerRevision(ledger, ledgerRevision)
+          if (metadata.enabled === false && enabled) throw new Error('This Skill is disabled in its frontmatter.')
+          changes = ledgerChanges(ledger, name, enabled ?? true, !saved.exists)
+        }
+        if (metadata.name !== name || metadata.description !== description.trim() || body !== content) {
+          document.set('name', name)
+          document.set('description', description.trim())
+          const text = skillDocument(name, `---\n${document.toString({ lineWidth: 0 })}---\n\n${content}`)
+          await locate(root, 'skill', name, true)
+          changes.push({ path, saved, text })
+        }
+        await applySkillChanges(changes, signal)
         return { ok: true }
       })
     },
@@ -334,14 +408,29 @@ export function nativeConfiguration(home, signal) {
         checkRevision(saved, revision)
         const { metadata } = skillParts(saved.text)
         const ledger = await skillLedger(root)
-        if (ledger.revision !== ledgerRevision) throw new Error('The native Skill settings changed. Refresh before editing.')
+        checkLedgerRevision(ledger, ledgerRevision)
         if (metadata.enabled === false || skillState(metadata, name, ledger) === 'unavailable') {
           throw new Error('This Skill cannot be toggled in the personal settings.')
         }
-        if (enabled === !ledger.disabled.includes(name)) return { ok: true }
-        const disabledSkills = enabled ? ledger.disabled.filter(value => value !== name) : [...ledger.disabled, name]
-        if (!settingsFields.disabledSkills(disabledSkills)) throw new Error('The native disabledSkills list is full.')
-        await replace(ledger.path, jsonText({ ...ledger.file, disabledSkills }), version(ledger.saved), signal)
+        await applySkillChanges(ledgerChanges(ledger, name, enabled), signal)
+        return { ok: true }
+      })
+    },
+    async toggleMcp({ name, revision, enabled }) {
+      checkResource('mcp', name)
+      const root = await configRoot()
+      return serialize(root, async () => {
+        signal.throwIfAborted()
+        const path = await locate(root, 'mcp')
+        const saved = await snapshot(path)
+        checkRevision(saved, revision)
+        const file = readJson(saved)
+        const servers = mcpEntries(file)
+        const entry = Object.hasOwn(servers, name) ? servers[name] : undefined
+        checkMcpEntry(entry, mcpView(entry))
+        if ((entry.disabled !== true) === enabled) return { ok: true }
+        const updated = { ...file, mcpServers: { ...servers, [name]: { ...entry, disabled: !enabled } } }
+        await replace(path, jsonText(updated), revision, signal)
         return { ok: true }
       })
     },
@@ -392,6 +481,12 @@ export function nativeConfiguration(home, signal) {
         let updated
         if (resource === 'skill') {
           updated = skillDocument(name, text)
+          if (!saved.exists) {
+            const changes = ledgerChanges(await skillLedger(root), name, true, true)
+            await locate(root, resource, name, true)
+            await applySkillChanges([...changes, { path, saved, text: updated }], signal)
+            return { ok: true }
+          }
         } else if (resource === 'mcp') {
           const file = readJson(saved)
           const servers = mcpEntries(file)
@@ -407,7 +502,7 @@ export function nativeConfiguration(home, signal) {
         return { ok: true }
       })
     },
-    async remove({ resource, name, revision }) {
+    async remove({ resource, name, revision, ledgerRevision }) {
       if (!['skill', 'mcp'].includes(resource)) throw new Error('Select a skill or MCP server to remove.')
       checkResource(resource, name)
       const root = await configRoot()
@@ -417,8 +512,11 @@ export function nativeConfiguration(home, signal) {
         const saved = await snapshot(path)
         checkRevision(saved, revision)
         if (resource === 'skill') {
-          signal.throwIfAborted()
-          if (saved.exists) await unlink(path)
+          if (saved.exists) {
+            const ledger = await skillLedger(root)
+            checkLedgerRevision(ledger, ledgerRevision)
+            await applySkillChanges([...ledgerChanges(ledger, name, true, true), { path, saved, text: null }], signal)
+          }
         } else if (saved.exists) {
           const file = readJson(saved)
           const servers = mcpEntries(file)
