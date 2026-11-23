@@ -1,11 +1,11 @@
 {
   "id": "factory-droid",
   "name": "Factory Droid",
-  "description": "Run Factory Droid in Studio using the official ACP engine.",
+  "description": "Independent Studio integration for Factory Droid using Factory’s ACP engine.",
   "i18n": {
     "en": {
       "name": "Factory Droid",
-      "description": "Run Factory Droid in Studio using the official ACP engine.",
+      "description": "Independent Studio integration for Factory Droid using Factory’s ACP engine.",
       "views": {
         "skills": "Skills",
         "mcp": "MCP servers",
@@ -14,7 +14,7 @@
     },
     "zh": {
       "name": "Factory Droid",
-      "description": "在 Studio 中通过官方 ACP 引擎运行 Factory Droid。",
+      "description": "Factory Droid 的 Studio 第三方集成，使用 Factory 的 ACP 引擎。",
       "views": {
         "skills": "技能",
         "mcp": "MCP 服务器",
@@ -23,7 +23,7 @@
     },
     "zh-TW": {
       "name": "Factory Droid",
-      "description": "在 Studio 中透過官方 ACP 引擎執行 Factory Droid。",
+      "description": "Factory Droid 的 Studio 第三方整合，使用 Factory 的 ACP 引擎。",
       "views": {
         "skills": "技能",
         "mcp": "MCP 伺服器",
@@ -32,7 +32,7 @@
     },
     "ja": {
       "name": "Factory Droid",
-      "description": "公式 ACP エンジンを使って Studio で Factory Droid を実行します。",
+      "description": "Factory の ACP エンジンを使用する Studio 向け Factory Droid のサードパーティー連携です。",
       "views": {
         "skills": "スキル",
         "mcp": "MCP サーバー",
@@ -41,7 +41,7 @@
     },
     "ko": {
       "name": "Factory Droid",
-      "description": "공식 ACP 엔진으로 Studio에서 Factory Droid를 실행합니다.",
+      "description": "Factory의 ACP 엔진을 사용하는 Factory Droid용 Studio 서드파티 통합입니다.",
       "views": {
         "skills": "스킬",
         "mcp": "MCP 서버",
@@ -50,7 +50,7 @@
     },
     "fr": {
       "name": "Factory Droid",
-      "description": "Exécutez Factory Droid dans Studio avec le moteur ACP officiel.",
+      "description": "Intégration tierce de Factory Droid dans Studio avec le moteur ACP de Factory.",
       "views": {
         "skills": "Compétences",
         "mcp": "Serveurs MCP",
@@ -59,7 +59,7 @@
     },
     "es": {
       "name": "Factory Droid",
-      "description": "Ejecuta Factory Droid en Studio con el motor oficial de ACP.",
+      "description": "Integración de terceros de Factory Droid en Studio con el motor ACP de Factory.",
       "views": {
         "skills": "Habilidades",
         "mcp": "Servidores MCP",
@@ -68,7 +68,7 @@
     },
     "de": {
       "name": "Factory Droid",
-      "description": "Factory Droid mit der offiziellen ACP-Engine in Studio ausführen.",
+      "description": "Drittanbieter-Integration von Factory Droid in Studio mit der ACP-Engine von Factory.",
       "views": {
         "skills": "Fähigkeiten",
         "mcp": "MCP-Server",
@@ -77,7 +77,7 @@
     },
     "pt": {
       "name": "Factory Droid",
-      "description": "Execute o Factory Droid no Studio com o motor oficial do ACP.",
+      "description": "Integração de terceiros do Factory Droid no Studio com o motor ACP da Factory.",
       "views": {
         "skills": "Habilidades",
         "mcp": "Servidores MCP",
@@ -86,7 +86,7 @@
     },
     "ru": {
       "name": "Factory Droid",
-      "description": "Запускайте Factory Droid в Studio через официальный движок ACP.",
+      "description": "Сторонняя интеграция Factory Droid со Studio на базе движка ACP от Factory.",
       "views": {
         "skills": "Навыки",
         "mcp": "Серверы MCP",
@@ -95,7 +95,7 @@
     },
     "ar": {
       "name": "Factory Droid",
-      "description": "شغّل Factory Droid في Studio باستخدام محرك ACP الرسمي.",
+      "description": "تكامل من طرف ثالث لتشغيل Factory Droid في Studio باستخدام محرك ACP من Factory.",
       "views": {
         "skills": "المهارات",
         "mcp": "خوادم MCP",
@@ -104,7 +104,7 @@
     },
     "tr": {
       "name": "Factory Droid",
-      "description": "Factory Droid’u resmî ACP motoruyla Studio’da çalıştırın.",
+      "description": "Factory'nin ACP motorunu kullanan, Studio için üçüncü taraf Factory Droid entegrasyonu.",
       "views": {
         "skills": "Beceriler",
         "mcp": "MCP sunucuları",

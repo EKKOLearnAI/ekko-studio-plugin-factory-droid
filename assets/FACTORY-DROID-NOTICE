@@ -1,0 +1,12 @@
+Factory Droid artwork
+
+Source: Factory AI's Factory Droid Zed extension, commit 6a5d674f5e106d63ff25346c3d1e607db525e2f0
+https://github.com/Factory-AI/factory-zed-extension/blob/6a5d674f5e106d63ff25346c3d1e607db525e2f0/droid-zed.svg
+
+icon.svg is the unmodified upstream file. icon.png rasterizes the Droid artwork
+at its original proportions on a dark rounded tile for light and dark Studio
+themes. License terms for the upstream artwork are in FACTORY-DROID-LICENSE.
+
+Factory and Droid marks identify the engine's origin. Ekko Studio's plugin is
+an independent integration. See section 6 of FACTORY-DROID-LICENSE for the
+scope of trademark use.

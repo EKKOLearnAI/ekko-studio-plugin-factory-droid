@@ -12,7 +12,7 @@
   "devDependencies": {
     "@ekko-studio/plugin-sdk": "file:./sdk"
   },
-  "description": "Run Factory Droid in Studio using the official ACP engine.",
+  "description": "Independent Studio integration for Factory Droid using Factory’s ACP engine.",
   "license": "MIT",
   "engines": {
     "node": ">=24.2"

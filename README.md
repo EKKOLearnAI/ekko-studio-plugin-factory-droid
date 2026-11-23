@@ -1,6 +1,6 @@
 # Factory Droid for Ekko Studio
 
-Run Factory Droid in a Studio chat with Factory's native models or a Studio-selected model. The plugin ID and local Agent ID are both `factory-droid`. Studio registers `plugin:factory-droid/factory-droid`.
+This independent integration runs Factory Droid in a Studio chat with Factory's native models or a Studio-selected model. The plugin ID and local Agent ID are both `factory-droid`. Studio registers `plugin:factory-droid/factory-droid`.
 
 ## Install
 
@@ -62,7 +62,7 @@ See [the runtime contract](docs/CONTRACTS.md) and [the SDK development guide](do
 
 ## License
 
-The plugin and its original factory-building icon use the [MIT License](LICENSE). The icon identifies the Ekko Studio integration. Factory's own brand mark appears in its documentation logo and in the Droid entry in the ACP Registry. [Factory logo](https://github.com/Factory-AI/factory/blob/main/docs/logo/light.svg) · [ACP Registry icon](https://github.com/agentclientprotocol/registry/blob/main/factory-droid/icon.svg)
+The plugin code uses the [MIT License](LICENSE). The icon identifies the Factory Droid engine used by this integration. The Droid artwork comes from [Factory's Zed extension](https://github.com/Factory-AI/factory-zed-extension/blob/6a5d674f5e106d63ff25346c3d1e607db525e2f0/droid-zed.svg) and is distributed under [Apache-2.0](assets/FACTORY-DROID-LICENSE). The [artwork notice](assets/FACTORY-DROID-NOTICE) records the PNG adaptation and the source of the mark.
 
 The bundled Studio SDK retains its [license](sdk/LICENSE) and [notices](sdk/NOTICE). The official Droid CLI is distributed separately by Factory under [Factory's terms](https://factory.ai/legal/terms).
 
