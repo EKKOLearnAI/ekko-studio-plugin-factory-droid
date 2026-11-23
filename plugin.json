@@ -1,0 +1,69 @@
+{
+  "id": "factory-droid",
+  "name": "Factory Droid",
+  "description": "Run Factory Droid in Studio using the official ACP engine.",
+  "i18n": {
+    "en": {
+      "name": "Factory Droid",
+      "description": "Run Factory Droid in Studio using the official ACP engine."
+    },
+    "zh": {
+      "name": "Factory Droid",
+      "description": "在 Studio 中通过官方 ACP 引擎运行 Factory Droid。"
+    },
+    "zh-TW": {
+      "name": "Factory Droid",
+      "description": "在 Studio 中透過官方 ACP 引擎執行 Factory Droid。"
+    },
+    "ja": {
+      "name": "Factory Droid",
+      "description": "公式 ACP エンジンを使って Studio で Factory Droid を実行します。"
+    },
+    "ko": {
+      "name": "Factory Droid",
+      "description": "공식 ACP 엔진으로 Studio에서 Factory Droid를 실행합니다."
+    },
+    "fr": {
+      "name": "Factory Droid",
+      "description": "Exécutez Factory Droid dans Studio avec le moteur ACP officiel."
+    },
+    "es": {
+      "name": "Factory Droid",
+      "description": "Ejecuta Factory Droid en Studio con el motor oficial de ACP."
+    },
+    "de": {
+      "name": "Factory Droid",
+      "description": "Factory Droid mit der offiziellen ACP-Engine in Studio ausführen."
+    },
+    "pt": {
+      "name": "Factory Droid",
+      "description": "Execute o Factory Droid no Studio com o motor oficial do ACP."
+    },
+    "ru": {
+      "name": "Factory Droid",
+      "description": "Запускайте Factory Droid в Studio через официальный движок ACP."
+    },
+    "ar": {
+      "name": "Factory Droid",
+      "description": "شغّل Factory Droid في Studio باستخدام محرك ACP الرسمي."
+    },
+    "tr": {
+      "name": "Factory Droid",
+      "description": "Factory Droid’u resmî ACP motoruyla Studio’da çalıştırın."
+    }
+  },
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "server": "server.mjs",
+  "permissions": [
+    "agents"
+  ],
+  "author": {
+    "name": "Ekko Studio"
+  },
+  "repository": "https://github.com/EKKOLearnAI/ekko-studio-plugin-factory-droid",
+  "homepage": "https://factory.ai/product/cli",
+  "documentation": "https://github.com/EKKOLearnAI/ekko-studio-plugin-factory-droid#install",
+  "license": "MIT",
+  "icon": "assets/icon.png"
+}

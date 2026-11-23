@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "description": "Factory Droid exposes the Studio Agent API v1. The plugin keeps the native ACP session ID in its live, identity-bound Agent instance between successful turns. It adds no custom RPC or persisted records.",
+  "models": {},
+  "rpc": {},
+  "storage": {},
+  "tools": {},
+  "commands": {},
+  "actions": {},
+  "events": {},
+  "checkpoints": {}
+}
