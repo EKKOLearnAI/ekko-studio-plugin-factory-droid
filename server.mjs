@@ -3,13 +3,16 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { Acp, AcpError } from './acp.mjs'
 import { engineStatus, findEngine } from './engine.mjs'
+import { managedEngine } from './managed-engine.mjs'
 import { acpServers, chooseModel, initialize, loginRequired, nativeModels, promptContent, sessionError, validId } from './protocol.mjs'
 import { openAcp } from './turn.mjs'
+import { runScoped, scopedProtocols } from './scoped.mjs'
 import manifest from './plugin.json' with { type: 'json' }
 
 const fullId = 'plugin:factory-droid/factory-droid'
 const ownerOnly = 'Factory Droid is available to the Studio account and Profile that enabled the plugin.'
-const install = 'Install the official Droid CLI on the Studio host and restart the Studio server if its PATH changed.'
+const identityMismatch = 'The Droid turn does not match the Studio account, Profile, session and mode.'
+const install = 'Install Droid CLI in Studio Agent Management or configure an external Droid executable on the Studio host.'
 const stopReasons = { end_turn: 'stop', refusal: 'stop', max_tokens: 'length', max_turn_requests: 'tool_limit' }
 const sameOwner = (left, right) => left.userId === right.userId && left.profile === right.profile
 const catalog = (status, models = [], message) => ({
@@ -51,6 +54,7 @@ async function runTurn(input, run, previous, getEngine, signal) {
   if (!isAbsolute(run.paths.workspaceDir)) throw new Error('Studio must provide an absolute workspace path.')
   const cwd = await realpath(run.paths.workspaceDir)
   signal.throwIfAborted()
+  if (run.mode === 'scoped') return { reply: await runScoped(input, run, engine, cwd, signal) }
   const turn = openAcp(engine, cwd, run, signal)
   const startup = AbortSignal.any([signal, AbortSignal.timeout(25_000)])
   try {
@@ -101,14 +105,15 @@ async function runTurn(input, run, previous, getEngine, signal) {
 }
 
 function createSession(owner, session, getEngine) {
-  if (!sameOwner(owner, session.identity) || session.mode !== 'global' || session.identity.agentId !== fullId) throw new Error(ownerOnly)
+  if (session.identity.agentId !== fullId || !['global', 'scoped'].includes(session.mode)) throw new Error(identityMismatch)
+  if (session.mode === 'global' && !sameOwner(owner, session.identity)) throw new Error(ownerOnly)
   const disposed = new AbortController()
   let active
   let previous
   return {
     async run(input, run) {
       if (!sameOwner(session.identity, run.identity) || run.identity.sessionId !== session.identity.sessionId ||
-          run.identity.agentId !== fullId || run.mode !== session.mode) throw new Error(ownerOnly)
+          run.identity.agentId !== fullId || run.mode !== session.mode) throw new Error(identityMismatch)
       if (active) throw new Error('Factory Droid already has an active turn in this Studio session.')
       const remaining = run.deadlineAt - Date.now()
       if (remaining <= 0) throw new Error('Droid turn timed out.')
@@ -138,13 +143,24 @@ function createSession(owner, session, getEngine) {
   }
 }
 
-export function definitionFor(owner, getEngine = findEngine) {
+export function definitionFor(owner, getEngine = findEngine, manager) {
+  function managementOwner(run) {
+    if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
+  }
   return {
     id: manifest.id, name: manifest.name, vendor: 'Factory AI', description: manifest.description, agentApiVersion: 1,
-    async getStatus(run) { return engineStatus(await getEngine(), run.signal) },
-    management: { installGuideUrl: manifest.documentation },
+    async getStatus(run) { return manager ? manager.status(run.signal) : engineStatus(await getEngine(), run.signal) },
+    management: {
+      installGuideUrl: manifest.documentation,
+      ...(manager?.native ? {
+        checkUpdate(run) { managementOwner(run); return manager.checkUpdate(run) },
+        upgrade(input, run) { managementOwner(run); return manager.upgrade(input, run) },
+        remove(run) { managementOwner(run); return manager.remove(run) },
+      } : {}),
+    },
     modes: {
       global: { listModels: run => sameOwner(owner, run.identity) ? listModels(run, getEngine) : catalog('auth_required', [], ownerOnly) },
+      scoped: { protocols: scopedProtocols },
     },
     features: { surfaces: ['chat'], streaming: true, resume: false },
     runtime: { createSession: session => createSession(owner, session, getEngine) },
@@ -153,6 +169,7 @@ export function definitionFor(owner, getEngine = findEngine) {
 
 export function apply(ctx) {
   const { userId, profile } = ctx.identity
-  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }))
+  const manager = managedEngine(ctx.paths.dataDir)
+  const registration = ctx.extensions.agents.register(definitionFor({ userId, profile }, async () => (await manager.resolve()).engine, manager))
   return () => registration.dispose()
 }

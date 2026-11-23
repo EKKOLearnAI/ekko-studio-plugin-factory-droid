@@ -1,9 +1,38 @@
 {
   "schemaVersion": 1,
-  "description": "Factory Droid exposes the Studio Agent API v1. The plugin keeps the native ACP session ID in its live, identity-bound Agent instance between successful turns. It adds no custom RPC or persisted records.",
-  "models": {},
+  "description": "Factory Droid exposes Studio Agent API v1 and records the selected Studio-managed CLI release. Native global continuation stays in its live Agent instance.",
+  "models": {
+    "engineSelection": {
+      "type": "object",
+      "description": "Selected npm release under the plugin engine directory. Empty release and version mark a removed installation.",
+      "properties": {
+        "release": {
+          "type": "string",
+          "description": "Random local directory name, or empty after removal.",
+          "maxLength": 80
+        },
+        "version": {
+          "type": "string",
+          "description": "Published stable npm version, or empty after removal.",
+          "maxLength": 24
+        }
+      },
+      "required": [
+        "release",
+        "version"
+      ],
+      "additionalProperties": false
+    }
+  },
   "rpc": {},
-  "storage": {},
+  "storage": {
+    "engineSelection": {
+      "model": "engineSelection",
+      "version": 1,
+      "scope": "Plugin data directory, shared by the activating owner and Studio Agent Manager",
+      "description": "Atomically selected release in droid-engine/current.json. An absent file enables external discovery."
+    }
+  },
   "tools": {},
   "commands": {},
   "actions": {},

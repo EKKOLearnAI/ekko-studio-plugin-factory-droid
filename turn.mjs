@@ -5,7 +5,7 @@ import { text, validId } from './protocol.mjs'
 const cancelled = { outcome: { outcome: 'cancelled' } }
 const toolKinds = new Set(['read', 'edit', 'delete', 'move', 'search', 'execute', 'think', 'fetch', 'switch_mode', 'other'])
 
-function permissionTitle(value, factoryKey) {
+export function permissionTitle(value, factoryKey) {
   if (typeof value !== 'string') return ''
   const title = factoryKey ? value.replaceAll(factoryKey, '[redacted]') : value
   return title

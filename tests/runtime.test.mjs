@@ -46,7 +46,7 @@ async function setup(t, { key = 'fixture-normal', getEngine } = {}) {
 test('registers the stable ID, declared features, and MIT manifest with the Studio Agent API', async () => {
   let registration
   let disposed
-  const cleanup = apply({ identity, extensions: { agents: { register(definition) {
+  const cleanup = apply({ identity, paths: { dataDir: tmpdir() }, extensions: { agents: { register(definition) {
     registration = definition
     return { dispose() { disposed = true } }
   } } } })
@@ -54,7 +54,7 @@ test('registers the stable ID, declared features, and MIT manifest with the Stud
   assert.equal(manifest.license, 'MIT')
   assert.equal(registration.agentApiVersion, 1)
   assert.deepEqual(registration.features, { surfaces: ['chat'], streaming: true, resume: false })
-  assert.deepEqual(Object.keys(registration.modes), ['global'])
+  assert.deepEqual(Object.keys(registration.modes), ['global', 'scoped'])
   assert.match(registration.management.installGuideUrl, /#install$/)
   assertContracts(contract)
   await cleanup()
@@ -204,9 +204,9 @@ test('another user, Profile, or session cannot borrow the native login or contin
   for (const identity of [{ ...base.identity, userId: 43 }, { ...base.identity, profile: 'other' }]) {
     assert.throws(() => definition.runtime.createSession({ ...base, identity }), /account and Profile/)
     assert.equal((await definition.modes.global.listModels({ ...base, identity })).status, 'auth_required')
-    await assert.rejects(session.run(makeInput('foreign'), { ...run, identity }), /account and Profile/)
+    await assert.rejects(session.run(makeInput('foreign'), { ...run, identity }), /account, Profile, session and mode/)
   }
-  await assert.rejects(session.run(makeInput('foreign'), { ...run, identity: { ...run.identity, sessionId: 'other' } }), /account and Profile/)
+  await assert.rejects(session.run(makeInput('foreign'), { ...run, identity: { ...run.identity, sessionId: 'other' } }), /account, Profile, session and mode/)
   await session.run(makeInput('owner session'), run)
   const other = definition.runtime.createSession({ ...base, identity: { ...base.identity, sessionId: 'second-chat' } })
   t.after(() => other.dispose())

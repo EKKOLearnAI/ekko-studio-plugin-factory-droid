@@ -1,32 +1,33 @@
 # Factory Droid for Ekko Studio
 
-Run Factory Droid in a Studio chat using the official Droid CLI and its native model catalog. The plugin ID and local Agent ID are both `factory-droid`. Studio registers `plugin:factory-droid/factory-droid`.
+Run Factory Droid in a Studio chat with Factory's native models or a Studio-selected model. The plugin ID and local Agent ID are both `factory-droid`. Studio registers `plugin:factory-droid/factory-droid`.
 
 ## Install
 
-1. On the machine that runs Studio, install the Droid version listed in the [ACP Registry](https://cdn.agentclientprotocol.com/registry/v1/latest/registry.json). This plugin was tested with `1.17.2`.
-
-   ```sh
-   npm install -g droid@1.17.2
-   droid --version
-   ```
-
-   See the [Factory CLI quickstart](https://docs.factory.com/droid-cli/quickstart) for other installation methods. Studio looks for `droid` on its server PATH, then under `~/.local/bin` and `~/.factory/bin`. Set `EKKO_FACTORY_DROID_EXECUTABLE` in the Studio server environment to select a specific absolute executable path. On Windows, point at the native `droid.exe` if npm only placed a command shim on PATH. The native npm binary is in the corresponding `@factory/cli-win32-x64` or `@factory/cli-win32-arm64` installation under `bin`. Restart the Studio server to apply environment changes.
-2. Run `droid` and complete Factory sign-in as the OS user running Studio. For headless use, set `FACTORY_API_KEY` with the Studio server's secret configuration. See [Factory authentication](https://docs.factory.com/droid-exec/overview#installation).
-3. In Studio's **Plugin Center**, use **Install from source**, enter the source below, then enable it. For a fixed install, append `#<40-character-commit>`. For local use, enter the absolute path of the plugin checkout.
+1. In Studio's **Plugin Center**, use **Install from source** and enable the plugin. For a local candidate, enter the absolute checkout path. For a GitHub installation, use a commit that contains the desired version.
 
    ```text
-   github:EKKOLearnAI/ekko-studio-plugin-factory-droid
+   github:EKKOLearnAI/ekko-studio-plugin-factory-droid#<40-character-commit>
    ```
-4. In **Agent Management**, confirm Factory Droid shows an installed CLI version. Start a single chat with Factory Droid in **Global** mode and select a model from Droid's catalog, or use its native default when Studio offers it.
+2. As the Studio super administrator who enabled the plugin, open **Agent Management → Factory Droid → Install**. Studio needs Node.js with npm, access to the public npm registry, and disk space for the package and its staging directory. Factory publishes macOS, Linux, and Windows builds for ARM64 and x64. Studio verifies the downloaded binary and its ACP handshake before selecting it.
+3. Use **Check update** to discover the current stable release or **Delete** to remove the selected managed package. Factory configuration, login and session data are stored separately. An external installation can be chosen explicitly after removal.
 
-## Behavior
+### External CLI
 
-- Droid runs in the workspace selected in Studio. Only the Studio user and Profile that enabled the plugin can use that host's native Droid login and model configuration.
-- Studio shows a permission prompt when the CLI requests an option it can approve for one use. Review the tool description and choose whether to allow it. The plugin does not pass autonomy or permission bypass flags. Droid's own rules continue to govern tools that it handles without asking Studio.
-- Images and file contents are sent as ACP attachments, subject to the negotiated capabilities and an 8 MiB total attachment limit per turn. Studio MCP servers are passed to Droid when the required transports are available.
-- Stop sends a cancellation for the active native session. Follow-up turns can load the previous native session while the Studio Agent instance is alive. When native loading is unavailable or the instance is recreated, Studio conversation history is provided to a new native session. Native session recovery across Studio restarts is not advertised.
-- Version `0.1.0` provides Global single chat and streaming. Engine installation, login, and native configuration are handled by the Droid CLI.
+An existing external Droid is detected on the Studio host PATH and in standard user bin directories. Install it with `npm install -g droid@1.17.2` or follow the [Factory CLI quickstart](https://docs.factory.com/droid-cli/quickstart). Set `EKKO_FACTORY_DROID_EXECUTABLE` in the Studio server environment to select an absolute executable path. On Windows use `droid.exe`. Recognized Windows npm layouts resolve to the native binary. Apply server environment changes by restarting Studio. Updates and deletion for an external CLI belong to its installer. The current Studio card can still display Delete and the backend rejects that action for external binaries.
+
+## Chat modes
+
+| Mode | Model selection and credentials |
+| --- | --- |
+| **Global** | Uses the native Droid model catalog and settings of the system account running Studio via the ACP Registry's `acp-daemon` launch. Sign in to Droid under that account or supply `FACTORY_API_KEY` through the Studio server's secret configuration. Only the activating Studio account and Profile may use this mode. |
+| **Model (scoped)** | Uses the current Studio account and Profile's authorized model through the Studio model proxy. The official Droid SDK's local `stream-jsonrpc` transport runs with a temporary BYOK configuration. The verified engine runs this path without Factory sign-in. Choose a Studio binding with a Chat Completions route. Studio can translate that route to a configured upstream protocol. |
+
+With a managed CLI, a Factory API key on the Studio server is the direct headless setup for Global. A native CLI already signed in under that same OS user supplies session credentials to the managed binary. See [Factory authentication](https://docs.factory.com/droid-exec/overview#installation).
+
+Both modes run in the selected workspace and show Studio prompts for tool permissions requested by the CLI. Approval authorizes only one use. Supported MCP transports are forwarded per turn. Images and files are capped at 8 MiB combined. Scoped file input accepts UTF-8 text and PDF, and image input accepts PNG, JPEG, GIF and WebP. Global uses ACP-negotiated input capabilities.
+
+Global follow-up turns can load the previous native session while the Studio Agent instance is alive. Scoped turns use authorized Studio history and a fresh native session. After a Studio restart, Global can also use Studio history. The plugin declares `resume: false`.
 
 ## Develop and test
 
@@ -39,7 +40,7 @@ npm test
 npm pack --dry-run --ignore-scripts
 ```
 
-Tests use a local ACP fixture. For the optional official 1.17.2 binary check, set `EKKO_FACTORY_DROID_NATIVE_TEST_CLI` to its absolute executable path before running `npm test`. The check uses a disposable CLI home and verifies the unconfigured login state. To verify a signed-in CLI, use a separate Studio instance and a temporary workspace. Try a benign prompt, a follow-up requiring earlier context, a tool operation that Droid is configured to ask about, and Stop during an active turn. Record the CLI version and platform along with the outcomes.
+Tests use a local ACP fixture. For the optional official 1.17.2 binary check, set `EKKO_FACTORY_DROID_NATIVE_TEST_CLI` to its absolute executable path before running `npm test`. The native checks use disposable CLI homes. They verify the Global login gate and make scoped requests, including a tool approval, through a synthetic loopback model. To verify a signed-in CLI, use a separate Studio instance and a temporary workspace. Try a benign prompt, a follow-up requiring earlier context, a tool operation that Droid is configured to ask about, and Stop during an active turn. Record the CLI version and platform along with the outcomes.
 
 See [the runtime contract](docs/CONTRACTS.md) and [the SDK development guide](docs/DEVELOPMENT.md).
 

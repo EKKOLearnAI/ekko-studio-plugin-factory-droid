@@ -1,5 +1,6 @@
 // ACP transport adapted from the Kiro and TRAE Studio plugins (MIT). See LICENSE.
 import { execFile, spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 
 const useProcessGroup = process.platform !== 'win32'
@@ -22,8 +23,9 @@ export class Acp {
   #exited = false
   #onFrame
 
-  constructor(executable, args, options, onFrame) {
+  constructor(executable, args, options, onFrame, factoryProtocol) {
     this.#onFrame = onFrame
+    this.factoryProtocol = factoryProtocol
     this.child = spawn(executable, args, { ...options, shell: false, detached: useProcessGroup, windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] })
     this.#closed = new Promise(resolve => {
       this.child.once('close', () => {
@@ -73,7 +75,11 @@ export class Acp {
 
   #send(frame) {
     if (this.#failure || this.#exited || this.child.stdin.destroyed || this.child.stdin.writableEnded) return false
-    const line = JSON.stringify({ jsonrpc: '2.0', ...frame })
+    const envelope = this.factoryProtocol ? {
+      factoryApiVersion: '1.0.0', factoryProtocolVersion: this.factoryProtocol,
+      type: frame.method ? (frame.id === undefined ? 'notification' : 'request') : 'response',
+    } : {}
+    const line = JSON.stringify({ jsonrpc: '2.0', ...envelope, ...frame })
     if (Buffer.byteLength(line) > frameLimit) throw new Error('Droid CLI ACP request exceeds its input limit.')
     this.child.stdin.write(line + '\n')
     return true
@@ -81,7 +87,7 @@ export class Acp {
 
   async request(method, params, signal) {
     signal.throwIfAborted()
-    const id = ++this.#nextId
+    const id = this.factoryProtocol ? randomUUID() : ++this.#nextId
     const { promise, resolve, reject } = Promise.withResolvers()
     const abort = () => reject(signal.reason)
     signal.addEventListener('abort', abort, { once: true })
@@ -96,6 +102,7 @@ export class Acp {
   }
 
   notify(method, params) { this.#send({ method, params }) }
+  get closed() { return this.#closed }
   respond(id, result) { this.#send({ id, result }) }
   methodNotFound(id) { this.#send({ id, error: { code: -32601, message: 'ACP client method unavailable' } }) }
 
