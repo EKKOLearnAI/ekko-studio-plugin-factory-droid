@@ -31,11 +31,11 @@ Global follow-up turns can load the previous native session while the Studio Age
 
 ## Manage native configuration
 
-Open **Agent Management → Factory Droid → Settings** as the activating Studio account in the activating Profile. The pages edit the system account's personal Droid files on the Studio server. Each editor shows its backing path.
+Open **Agent Management → Factory Droid → Settings** as the activating Studio account in the activating Profile. The Skills page provides a searchable list and file preview. The MCP page provides searchable server cards, status switches and a masked configuration viewer. The configuration page shows engine status and two separately saved settings editors. Each page shows the relevant personal location on the Studio server.
 
 | Page | File | Actions |
 | --- | --- | --- |
-| **Skills** | `~/.factory/skills/<name>/SKILL.md` | Create or edit Markdown with matching `name` and a `description`. Remove the skill entry point while keeping supporting files. Manage the disable list through `disabledSkills` in **Droid settings**. [Factory Skills](https://docs.factory.com/harness/skills) |
+| **Skills** | `~/.factory/skills/<name>/SKILL.md` | Create or edit a description and Markdown body. Existing extra YAML fields are retained. The switch writes `disabledSkills` to the personal local layer when that layer defines the key, or to the personal defaults otherwise. Frontmatter and project rules can also disable a skill. Delete removes the entry point and keeps supporting files. [Factory Skills](https://docs.factory.com/harness/skills) |
 | **MCP servers** | `~/.factory/mcp.json` | Add, edit, enable, disable or remove one item inside `mcpServers`. Choose `stdio`, `http` or `sse` for a new entry. Reload shows existing endpoint URLs, arguments and credential values as `null`. Leave those placeholders to keep the stored values. To change transport, create a new entry. [Factory MCP](https://docs.factory.com/harness/mcp) |
 | **Droid settings** | `~/.factory/settings.json`, `~/.factory/settings.local.json` | Edit `model`, `reasoningEffort`, `disabledSkills`, `blockOnMcpLoad` and `streamAssistantResponses` in the chosen layer. Omit a supported key to clear it from that layer. Other keys, including custom model and authentication settings, are preserved. [Factory settings](https://docs.factory.com/droid-cli/settings) |
 
@@ -65,3 +65,5 @@ See [the runtime contract](docs/CONTRACTS.md) and [the SDK development guide](do
 The plugin and its original factory-building icon use the [MIT License](LICENSE). The icon identifies the Ekko Studio integration. Factory's own brand mark appears in its documentation logo and in the Droid entry in the ACP Registry. [Factory logo](https://github.com/Factory-AI/factory/blob/main/docs/logo/light.svg) · [ACP Registry icon](https://github.com/agentclientprotocol/registry/blob/main/factory-droid/icon.svg)
 
 The bundled Studio SDK retains its [license](sdk/LICENSE) and [notices](sdk/NOTICE). The official Droid CLI is distributed separately by Factory under [Factory's terms](https://factory.ai/legal/terms).
+
+The settings layout adapts the MIT-licensed [Ekko Studio Cline plugin](https://github.com/EKKOLearnAI/ekko-studio-plugin-cline). The bundled YAML parser retains its [license](assets/YAML-LICENSE).

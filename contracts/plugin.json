@@ -207,6 +207,206 @@
         "ok"
       ],
       "additionalProperties": false
+    },
+    "nativeOverview": {
+      "type": "object",
+      "description": "Native personal inventory and optional effective personal Skill ledger.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute, canonical native configuration path.",
+          "maxLength": 4096
+        },
+        "items": {
+          "type": "array",
+          "description": "Native personal entries, including read-only entries when recognized.",
+          "items": {
+            "type": "object",
+            "description": "Summary of one native personal entry.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Native personal Skill or server entry name.",
+                "maxLength": 96,
+                "minLength": 1
+              },
+              "description": {
+                "type": "string",
+                "description": "Skill description or executable name, without server argument or credential values.",
+                "maxLength": 2000
+              },
+              "state": {
+                "type": "string",
+                "description": "Status configured in the personal layer. Unavailable means the status could not be determined.",
+                "maxLength": 11,
+                "enum": [
+                  "enabled",
+                  "disabled",
+                  "unavailable"
+                ]
+              },
+              "readOnly": {
+                "type": "boolean",
+                "description": "Whether the entry cannot be edited through Studio."
+              },
+              "canToggle": {
+                "type": "boolean",
+                "description": "Whether Studio can change the personal enabled state."
+              },
+              "transport": {
+                "type": "string",
+                "description": "MCP transport for an editable entry.",
+                "maxLength": 5,
+                "enum": [
+                  "stdio",
+                  "http",
+                  "sse"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "description": "Absolute, canonical native configuration path.",
+                "maxLength": 4096
+              },
+              "revision": {
+                "type": "string",
+                "description": "Backing native file revision for editable entries.",
+                "minLength": 64,
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "state",
+              "readOnly",
+              "canToggle"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "ledgerRevision": {
+          "type": "string",
+          "description": "Hash of both personal settings files, required for Skill state changes.",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "ledgerPath": {
+          "type": "string",
+          "description": "Absolute, canonical native configuration path.",
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "path",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    "editNativeSkill": {
+      "type": "object",
+      "description": "Create or edit a Skill while preserving its extra YAML metadata.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native personal Skill or server entry name.",
+          "maxLength": 96,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "description": "Backing SKILL.md revision returned by read-native-config.",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "description": {
+          "type": "string",
+          "description": "Skill routing description.",
+          "maxLength": 2000,
+          "minLength": 1
+        },
+        "content": {
+          "type": "string",
+          "description": "Markdown body, excluding YAML frontmatter.",
+          "maxLength": 256000,
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "revision",
+        "description",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "toggleNativeSkill": {
+      "type": "object",
+      "description": "Change the personal Skill ledger in the effective settings layer.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Native personal Skill or server entry name.",
+          "maxLength": 96,
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "description": "Backing SKILL.md revision returned by read-native-config.",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "ledgerRevision": {
+          "type": "string",
+          "description": "Observed hash of both personal settings files.",
+          "maxLength": 64,
+          "minLength": 64
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the personal Skill should be enabled."
+        }
+      },
+      "required": [
+        "name",
+        "revision",
+        "ledgerRevision",
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "nativeEngineStatus": {
+      "type": "object",
+      "description": "Current engine status for the configuration page.",
+      "properties": {
+        "installed": {
+          "type": "boolean",
+          "description": "Whether Droid is installed."
+        },
+        "version": {
+          "type": "string",
+          "description": "Detected engine version, empty if absent.",
+          "maxLength": 128
+        },
+        "source": {
+          "type": "string",
+          "description": "Engine selection source.",
+          "maxLength": 96
+        }
+      },
+      "required": [
+        "installed",
+        "version",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "nativeEngineStatusInput": {
+      "type": "object",
+      "description": "Read engine status without additional input.",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
     }
   },
   "rpc": {
@@ -229,6 +429,26 @@
       "description": "Remove the selected entry point or one server under a revision guard.",
       "input": "removeNativeConfig",
       "output": "nativeConfigSaved"
+    },
+    "overview-native-config": {
+      "description": "List personal Skill or MCP cards without disclosing credential values.",
+      "input": "listNativeConfig",
+      "output": "nativeOverview"
+    },
+    "edit-native-skill": {
+      "description": "Edit the Skill description and Markdown using native YAML frontmatter.",
+      "input": "editNativeSkill",
+      "output": "nativeConfigSaved"
+    },
+    "toggle-native-skill": {
+      "description": "Update native personal disabledSkills with revision checks.",
+      "input": "toggleNativeSkill",
+      "output": "nativeConfigSaved"
+    },
+    "native-engine-status": {
+      "description": "Read the selected Droid engine status for the owner settings view.",
+      "input": "nativeEngineStatusInput",
+      "output": "nativeEngineStatus"
     }
   },
   "storage": {

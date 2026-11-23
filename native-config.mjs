@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { lstat, mkdir, open, readdir, realpath, rename, rm, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { isMap, parseDocument } from './vendor-yaml.mjs'
 
 const limit = 256 * 1024
 const skillName = /^(?=.{1,64}$)[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -107,14 +108,21 @@ function readJson(saved) {
   catch { throw new Error('The native file is not a valid JSON object. Repair it in Droid or a text editor first.') }
 }
 
+function skillParts(text) {
+  const match = /^(?:\uFEFF)?---\r?\n([\s\S]*?)^---[ \t]*(?:\r?\n|$)/m.exec(text)
+  const header = match?.index === 0 ? match : undefined
+  if (!header && /^(?:\uFEFF)?---(?:\r?\n|$)/.test(text)) throw new Error('Repair the SKILL.md frontmatter in Droid first.')
+  const document = parseDocument(header?.[1] ?? '')
+  if (document.errors.length || document.contents !== null && !isMap(document.contents)) {
+    throw new Error('Repair the SKILL.md frontmatter in Droid first.')
+  }
+  return { document, metadata: document.toJS({ maxAliasCount: 20 }) ?? {},
+    body: header ? text.slice(header[0].length).replace(/^\r?\n/, '') : text }
+}
+
 function skillDocument(name, text) {
-  const body = text.match(/^(?:\uFEFF)?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1]
-  const declarations = [...(body ?? '').matchAll(/^name:[ \t]*(.*?)\r?$/gm)]
-  const descriptions = [...(body ?? '').matchAll(/^description:[ \t]*(.*?)(?:\r?\n|$)/gm)]
-  const declared = declarations[0]?.[1].trim()
-  const description = descriptions[0]?.[1].trim()
-  if (declarations.length !== 1 || ![name, `"${name}"`, `'${name}'`].includes(declared) ||
-      descriptions.length !== 1 || !description || description.startsWith('#') || ['""', "''", 'null', '~'].includes(description)) {
+  const { metadata } = skillParts(text)
+  if (metadata.name !== name || typeof metadata.description !== 'string' || !metadata.description.trim()) {
     throw new Error('SKILL.md needs frontmatter with the matching name and a nonempty description.')
   }
   return text.endsWith('\n') ? text : text + '\n'
@@ -236,7 +244,107 @@ export function nativeConfiguration(home, signal) {
     return join(root, resource === 'mcp' ? 'mcp.json' : resource === 'settings-local' ? 'settings.local.json' : 'settings.json')
   }
 
+  async function skillLedger(root) {
+    const basePath = join(root, 'settings.json')
+    const localPath = join(root, 'settings.local.json')
+    const [base, local] = await Promise.all([snapshot(basePath), snapshot(localPath)])
+    const localConfig = readJson(local)
+    const useLocal = Object.hasOwn(localConfig, 'disabledSkills')
+    const file = useLocal ? localConfig : readJson(base)
+    const disabled = Object.hasOwn(file, 'disabledSkills') ? file.disabledSkills : []
+    if (!settingsFields.disabledSkills(disabled)) throw new Error('Repair disabledSkills in the native Droid settings first.')
+    const revision = createHash('sha256').update(version(base)).update(version(local)).digest('hex')
+    return { path: useLocal ? localPath : basePath, saved: useLocal ? local : base, file, disabled, revision }
+  }
+
+  function skillState(metadata, name, ledger) {
+    if (metadata.name !== name || typeof metadata.description !== 'string' || !metadata.description.trim()) return 'unavailable'
+    return metadata.enabled === false || ledger?.disabled.includes(name) ? 'disabled' : ledger ? 'enabled' : 'unavailable'
+  }
+
   return {
+    async overview({ resource }) {
+      signal.throwIfAborted()
+      const root = await configRoot()
+      if (resource === 'mcp') {
+        const path = await locate(root, resource)
+        const saved = await snapshot(path)
+        const revision = version(saved)
+        const entries = mcpEntries(readJson(saved))
+        const items = Object.keys(entries).filter(name => serverName.test(name) && !forbidden.has(name)).sort().map(name => {
+          try {
+            const entry = mcpView(entries[name])
+            return { name, revision, state: entry.disabled ? 'disabled' : 'enabled', transport: entry.type,
+              description: typeof entry.command === 'string' ? entry.command.slice(0, 2000) : '', readOnly: false, canToggle: true }
+          } catch { return { name, state: 'unavailable', description: '', readOnly: true, canToggle: false } }
+        })
+        return { path, items }
+      }
+      const path = join(root, 'skills')
+      const items = []
+      if (!await folder(root) || !await folder(path)) return { path, items }
+      const ledger = await skillLedger(root).catch(() => null)
+      for (const entry of await readdir(path, { withFileTypes: true })) {
+        signal.throwIfAborted()
+        const name = entry.name
+        if (!skillName.test(name) || deviceName.test(name)) continue
+        const file = join(path, name, 'SKILL.md')
+        try {
+          if (entry.isSymbolicLink()) throw new Error('A linked directory is read-only.')
+          if (!entry.isDirectory()) continue
+          const saved = await snapshot(file)
+          if (!saved.exists) continue
+          const { metadata } = skillParts(saved.text)
+          const state = skillState(metadata, name, ledger)
+          const description = typeof metadata.description === 'string' ? metadata.description : ''
+          const readOnly = description.length > 2000
+          items.push({ name, state, revision: version(saved), description: description.slice(0, 2000),
+            readOnly, canToggle: !readOnly && state !== 'unavailable' && metadata.enabled !== false, path: file })
+        } catch {
+          items.push({ name, state: 'unavailable', description: '', readOnly: true, canToggle: false, path: file })
+        }
+      }
+      return { path, items: items.sort((a, b) => a.name.localeCompare(b.name)), ...(ledger ? { ledgerRevision: ledger.revision, ledgerPath: ledger.path } : {}) }
+    },
+    async editSkill({ name, revision, description, content }) {
+      checkResource('skill', name)
+      if (!description.trim() || !content.trim()) throw new Error('A Skill requires a description and Markdown content.')
+      const root = await configRoot()
+      return serialize(root, async () => {
+        signal.throwIfAborted()
+        const path = await locate(root, 'skill', name)
+        const saved = await snapshot(path)
+        checkRevision(saved, revision)
+        const { document, metadata, body } = skillParts(saved.text)
+        if (metadata.name === name && metadata.description === description.trim() && body === content) return { ok: true }
+        document.set('name', name)
+        document.set('description', description.trim())
+        const markdown = skillDocument(name, `---\n${document.toString({ lineWidth: 0 })}---\n\n${content}`)
+        await locate(root, 'skill', name, true)
+        await replace(path, markdown, revision, signal)
+        return { ok: true }
+      })
+    },
+    async toggleSkill({ name, revision, ledgerRevision, enabled }) {
+      checkResource('skill', name)
+      const root = await configRoot()
+      return serialize(root, async () => {
+        signal.throwIfAborted()
+        const saved = await snapshot(await locate(root, 'skill', name))
+        checkRevision(saved, revision)
+        const { metadata } = skillParts(saved.text)
+        const ledger = await skillLedger(root)
+        if (ledger.revision !== ledgerRevision) throw new Error('The native Skill settings changed. Refresh before editing.')
+        if (metadata.enabled === false || skillState(metadata, name, ledger) === 'unavailable') {
+          throw new Error('This Skill cannot be toggled in the personal settings.')
+        }
+        if (enabled === !ledger.disabled.includes(name)) return { ok: true }
+        const disabledSkills = enabled ? ledger.disabled.filter(value => value !== name) : [...ledger.disabled, name]
+        if (!settingsFields.disabledSkills(disabledSkills)) throw new Error('The native disabledSkills list is full.')
+        await replace(ledger.path, jsonText({ ...ledger.file, disabledSkills }), version(ledger.saved), signal)
+        return { ok: true }
+      })
+    },
     async list({ resource }) {
       signal.throwIfAborted()
       const root = await configRoot()

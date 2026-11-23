@@ -176,14 +176,24 @@ export function apply(ctx) {
   const { userId, profile } = ctx.identity
   const owner = { userId, profile }
   const manager = managedEngine(ctx.paths.dataDir)
-  const configuration = Object.entries({ 'list-native-config': 'list', 'read-native-config': 'read',
-    'save-native-config': 'save', 'remove-native-config': 'remove' }).map(([name, method]) => {
-    return registerRpc(ctx, contract, name, (input, run) => {
-      if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
-      run.signal.throwIfAborted()
-      return nativeConfiguration(factoryUserHome(), run.signal)[method](input)
-    })
+  const registerOwnerRpc = (name, handler) => registerRpc(ctx, contract, name, (input, run) => {
+    if (!sameOwner(owner, run.identity)) throw new Error(ownerOnly)
+    run.signal.throwIfAborted()
+    return handler(input, run)
   })
+  const configuration = Object.entries({
+    'list-native-config': 'list',
+    'overview-native-config': 'overview',
+    'read-native-config': 'read',
+    'save-native-config': 'save',
+    'remove-native-config': 'remove',
+    'edit-native-skill': 'editSkill',
+    'toggle-native-skill': 'toggleSkill',
+  }).map(([name, method]) => registerOwnerRpc(name, (input, run) => nativeConfiguration(factoryUserHome(), run.signal)[method](input)))
+  configuration.push(registerOwnerRpc('native-engine-status', async (_input, run) => {
+    const { installed, version, source } = await manager.status(run.signal)
+    return { installed, version, source: source ?? '' }
+  }))
   const registration = ctx.extensions.agents.register(definitionFor(owner, async () => (await manager.resolve()).engine, manager))
   return async () => { await Promise.all([registration.dispose(), ...configuration.map(dispose => dispose())]) }
 }

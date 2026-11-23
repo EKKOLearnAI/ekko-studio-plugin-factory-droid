@@ -52,6 +52,54 @@ test('skills create, read, edit and remove only the native SKILL.md entry point'
   assert.equal((await config.read(selection)).exists, false)
 })
 
+test('Skill cards and detail edits preserve YAML metadata and use the effective personal ledger', async t => {
+  const home = await temporaryHome(t)
+  const config = nativeConfiguration(home, timeout())
+  const skill = input('skill', 'review-patch')
+  const frontmatter = [
+    '---', 'name: review-patch', 'description: >-', '  Check a patch.',
+    '# preserve this', 'user-invocable: false', 'metadata:', '  owner: fixture', '---', '', 'Original body',
+  ].join('\n')
+  await save(config, skill, frontmatter)
+  const base = input('settings')
+  const local = input('settings-local')
+  await save(config, base, '{"disabledSkills":["review-patch"]}')
+  await save(config, local, '{"model":"other-setting","disabledSkills":["unrelated-skill"]}')
+  let overview = await config.overview({ resource: 'skill' })
+  let [item] = overview.items
+  assert.equal(item.description, 'Check a patch.')
+  assert.equal(item.state, 'enabled')
+  assert.ok(overview.ledgerPath.endsWith('settings.local.json'))
+  const stale = { name: item.name, revision: item.revision, ledgerRevision: overview.ledgerRevision, enabled: false }
+  await config.editSkill({ name: item.name, revision: item.revision, description: 'Review: bugs and behavior', content: 'Edited body' })
+  const edited = (await config.read(skill)).text
+  assert.match(edited, /preserve this/)
+  assert.match(edited, /user-invocable: false/)
+  assert.match(edited, /metadata:\r?\n  owner: fixture/)
+  assert.match(edited, /Edited body/)
+  await assert.rejects(config.toggleSkill(stale), /changed/)
+  overview = await config.overview({ resource: 'skill' })
+  ;[item] = overview.items
+  const current = { ...stale, revision: item.revision, ledgerRevision: overview.ledgerRevision }
+  await config.toggleSkill(current)
+  assert.deepEqual(JSON.parse((await config.read(local)).text), {
+    model: 'other-setting', disabledSkills: ['unrelated-skill', 'review-patch'],
+  })
+  assert.deepEqual(JSON.parse((await config.read(base)).text), { disabledSkills: ['review-patch'] })
+  await assert.rejects(config.toggleSkill({ ...current, enabled: true }), /settings changed/)
+  overview = await config.overview({ resource: 'skill' })
+  await config.toggleSkill({ ...current, enabled: true, ledgerRevision: overview.ledgerRevision })
+  assert.equal((await config.overview({ resource: 'skill' })).items[0].state, 'enabled')
+
+  await save(config, skill, edited.replace('user-invocable: false', 'enabled: false'))
+  overview = await config.overview({ resource: 'skill' })
+  ;[item] = overview.items
+  assert.equal(item.state, 'disabled')
+  assert.equal(item.canToggle, false)
+  await assert.rejects(config.toggleSkill({ ...current, revision: item.revision,
+    ledgerRevision: overview.ledgerRevision, enabled: true }), /cannot be toggled/)
+})
+
 test('MCP edits mask private values, preserve hidden values and unrelated entries, and remove a single server', async t => {
   const home = await temporaryHome(t)
   const native = join(home, '.factory')
@@ -63,7 +111,13 @@ test('MCP edits mask private values, preserve hidden values and unrelated entrie
     headers: { Authorization: 'Bearer fixture-secret', 'X-Endpoint': 'private-value' },
     oauth: { clientSecret: 'api-secret' }, timeout: 2000 }
   const unrelated = { type: 'stdio', command: 'node', args: ['secret-argument'], env: { SECRET: 'secret-env' }, disabled: false }
-  await writeFile(mcpFile, JSON.stringify({ mcpServers: { 'api-service': entry, unrelated }, futureKey: 'keep' }))
+  const unsupported = { type: 'future-protocol', token: 'secret-unsupported' }
+  await writeFile(mcpFile, JSON.stringify({ mcpServers: { 'api-service': entry, unrelated, unsupported }, futureKey: 'keep' }))
+  const inventory = await config.overview({ resource: 'mcp' })
+  assert.doesNotMatch(JSON.stringify(inventory), /secret|private-value/)
+  assert.deepEqual(inventory.items.map(({ name, transport, state, canToggle }) => [name, transport, state, canToggle]), [
+    ['api-service', 'http', 'enabled', true], ['unrelated', 'stdio', 'enabled', true], ['unsupported', undefined, 'unavailable', false],
+  ])
   const remote = await config.read(selected)
   assert.doesNotMatch(remote.text, /secret|private-value/)
   assert.deepEqual(JSON.parse(remote.text), {
@@ -74,7 +128,7 @@ test('MCP edits mask private values, preserve hidden values and unrelated entrie
   const edited = { ...JSON.parse(remote.text), disabled: true }
   await config.save({ ...selected, revision: remote.revision, text: JSON.stringify(edited) })
   let stored = JSON.parse(await readFile(mcpFile, 'utf8'))
-  assert.deepEqual(stored, { mcpServers: { 'api-service': { ...entry, disabled: true }, unrelated }, futureKey: 'keep' })
+  assert.deepEqual(stored, { mcpServers: { 'api-service': { ...entry, disabled: true }, unrelated, unsupported }, futureKey: 'keep' })
   const fresh = input('mcp', 'new-local')
   await save(config, fresh, '{"type":"stdio","command":"node","args":["fixture.mjs"],"env":{},"disabled":true}')
   await assert.rejects(save(config, input('mcp', 'wrong'), '{"type":"http","url":"file:///outside"}'), /HTTP/)
@@ -84,6 +138,7 @@ test('MCP edits mask private values, preserve hidden values and unrelated entrie
   stored = JSON.parse(await readFile(mcpFile, 'utf8'))
   assert.equal(stored.futureKey, 'keep')
   assert.deepEqual(stored.mcpServers.unrelated, unrelated)
+  assert.deepEqual(stored.mcpServers.unsupported, unsupported)
   assert.equal(stored.mcpServers['new-local'].disabled, true)
   assert.equal(stored.mcpServers['api-service'], undefined)
 })
@@ -179,6 +234,8 @@ test('registration exposes three owned settings pages and validates RPC ownershi
   const wrong = { ...run, identity: { ...owner, profile: 'other' } }
   assert.throws(() => agent.management.settings(wrong), /enabled the plugin/)
   await assert.rejects(read(input('settings'), wrong), /enabled the plugin/)
+  await assert.rejects(registrations.get('overview-native-config')(input('skill'), wrong), /enabled the plugin/)
+  await assert.rejects(registrations.get('native-engine-status')({}, wrong), /enabled the plugin/)
   await assert.rejects(read({ resource: 'settings', path: 'absolute-external' }, run), /unknown property/)
   assert.equal((await read(input('settings'), run)).path, join(home, '.factory', 'settings.json'))
   assert.equal(factoryUserHome(), home)
