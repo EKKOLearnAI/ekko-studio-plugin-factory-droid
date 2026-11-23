@@ -137,6 +137,50 @@ test('Skill editor state and same-name recreation clear only the matching person
   assert.match((await config.read(selection)).text, /Recreated/)
 })
 
+test('a valid local Skill ledger overrides a malformed base field without changing the base file', async t => {
+  const home = await temporaryHome(t)
+  const config = nativeConfiguration(home, timeout())
+  const name = 'shadowed-healthy-skill'
+  const selection = input('skill', name)
+  const native = join(home, '.factory')
+  const local = input('settings-local')
+  await save(config, selection, `---\nname: ${name}\ndescription: Override fixture\n---\n\nInitial body\n`)
+  await save(config, local, '{"disabledSkills":["other-local"],"reasoningEffort":"low"}')
+  const basePath = join(native, 'settings.json')
+  const baseText = '{ "disabledSkills": "invalid-fixture-type", "privateField": { "preserve": true } }\n'
+  await writeFile(basePath, baseText)
+  const localState = async () => JSON.parse((await config.read(local)).text)
+  const current = async () => {
+    const overview = await config.overview({ resource: 'skill' })
+    const item = overview.items.find(entry => entry.name === name)
+    assert.equal(overview.ledgerPath, join(native, 'settings.local.json'))
+    return { item, ledgerRevision: overview.ledgerRevision, revision: (await config.read(selection)).revision }
+  }
+  const initial = await current()
+  assert.equal(initial.item.state, 'enabled')
+  assert.equal(initial.item.canToggle, true)
+  await config.toggleSkill({ name, revision: initial.revision, ledgerRevision: initial.ledgerRevision, enabled: false })
+  assert.deepEqual(await localState(), { disabledSkills: ['other-local', name], reasoningEffort: 'low' })
+  const { revision, ledgerRevision } = await current()
+  await config.remove({ ...selection, revision, ledgerRevision })
+  assert.equal((await config.read(selection)).exists, false)
+  assert.deepEqual(await localState(), { disabledSkills: ['other-local'], reasoningEffort: 'low' })
+  const fresh = await current()
+  await config.editSkill({ name, revision: fresh.revision, ledgerRevision: fresh.ledgerRevision,
+    enabled: true, description: 'Override fixture', content: 'Recreated body' })
+  assert.equal((await current()).item.state, 'enabled')
+  assert.equal(await readFile(basePath, 'utf8'), baseText)
+
+  // Without a local disabledSkills key, the malformed base value is effective.
+  await save(config, local, '{"reasoningEffort":"low"}')
+  const unavailable = await config.overview({ resource: 'skill' })
+  assert.equal(unavailable.items[0].state, 'unavailable')
+  assert.equal(unavailable.items[0].canToggle, false)
+  await assert.rejects(remove(config, selection), /Repair disabledSkills/)
+  assert.equal((await config.read(selection)).exists, true)
+  assert.equal(await readFile(basePath, 'utf8'), baseText)
+})
+
 test('MCP edits mask private values, preserve hidden values and unrelated entries, and remove a single server', async t => {
   const home = await temporaryHome(t)
   const native = join(home, '.factory')

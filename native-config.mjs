@@ -292,11 +292,11 @@ export function nativeConfiguration(home, signal) {
       const saved = await snapshot(path)
       const file = readJson(saved)
       const disabled = Object.hasOwn(file, 'disabledSkills') ? file.disabledSkills : []
-      if (!settingsFields.disabledSkills(disabled)) throw new Error('Repair disabledSkills in the native Droid settings first.')
       return { path, saved, file, disabled }
     }))
     const [base, local] = layers
     const effective = Object.hasOwn(local.file, 'disabledSkills') ? local : base
+    if (!settingsFields.disabledSkills(effective.disabled)) throw new Error('Repair disabledSkills in the native Droid settings first.')
     const revision = createHash('sha256').update(version(base.saved)).update(version(local.saved)).digest('hex')
     return { layers, effective, revision }
   }
@@ -304,6 +304,8 @@ export function nativeConfiguration(home, signal) {
   function ledgerChanges(ledger, name, enabled, clearShadowed = false) {
     const layers = clearShadowed ? ledger.layers : [ledger.effective]
     return layers.flatMap(layer => {
+      // A local override makes a malformed base field irrelevant to this operation.
+      if (layer !== ledger.effective && !settingsFields.disabledSkills(layer.disabled)) return []
       const disabled = layer === ledger.effective && !enabled
       if (layer.disabled.includes(name) === disabled) return []
       const disabledSkills = disabled ? [...layer.disabled, name] : layer.disabled.filter(value => value !== name)
