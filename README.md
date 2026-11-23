@@ -46,4 +46,6 @@ See [the runtime contract](docs/CONTRACTS.md) and [the SDK development guide](do
 
 ## License
 
-The plugin and its original icon use the [MIT License](LICENSE). The bundled Studio SDK retains its [license](sdk/LICENSE) and [notices](sdk/NOTICE). The official Droid CLI is distributed separately by Factory under [Factory's terms](https://factory.ai/legal/terms).
+The plugin and its original factory-building icon use the [MIT License](LICENSE). The icon identifies the Ekko Studio integration. Factory's own brand mark appears in its documentation logo and in the Droid entry in the ACP Registry. [Factory logo](https://github.com/Factory-AI/factory/blob/main/docs/logo/light.svg) · [ACP Registry icon](https://github.com/agentclientprotocol/registry/blob/main/factory-droid/icon.svg)
+
+The bundled Studio SDK retains its [license](sdk/LICENSE) and [notices](sdk/NOTICE). The official Droid CLI is distributed separately by Factory under [Factory's terms](https://factory.ai/legal/terms).
